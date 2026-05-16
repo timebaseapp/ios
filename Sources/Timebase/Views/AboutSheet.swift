@@ -25,19 +25,6 @@ struct AboutSheet: View {
                 .allowsHitTesting(false)
 
             VStack(spacing: 0) {
-                // Traffic lights — top-left
-                HStack(spacing: 8) {
-                    TrafficLight(color: Color(red: 1.0, green: 0.373, blue: 0.341),
-                                 symbol: "xmark", showSymbol: true) { dismiss() }
-                    TrafficLight(color: Color(red: 1.0, green: 0.741, blue: 0.180),
-                                 symbol: "minus", showSymbol: false) { }
-                    TrafficLight(color: Color(red: 0.157, green: 0.788, blue: 0.251),
-                                 symbol: "square", showSymbol: false) { }
-                    Spacer()
-                }
-                .padding(.horizontal, 14)
-                .padding(.top, 14)
-
                 Spacer(minLength: 0)
 
                 Text("Timebase")
@@ -57,13 +44,6 @@ struct AboutSheet: View {
                     .font(.custom("DepartureMono-Regular", size: 14))
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 24)
-                    .padding(.bottom, 10)
-
-                Text("A minimal world clock. Drag, scroll, or scrub to see what time it'll be anywhere.")
-                    .font(.custom("DepartureMono-Regular", size: 11))
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 28)
                     .padding(.bottom, 22)
 
                 // Inline settings card
@@ -118,8 +98,8 @@ struct AboutSheet: View {
                             .frame(width: 30, height: 30)
                     }
                     Link(destination: URL(string: "https://x.com/amrith")!) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 14, weight: .heavy))
+                        Text("𝕏")
+                            .font(.system(size: 18, weight: .bold))
                             .foregroundStyle(.secondary)
                             .frame(width: 30, height: 30)
                     }
@@ -147,27 +127,3 @@ private struct SettingRow<Content: View>: View {
     }
 }
 
-/// macOS-style traffic-light button.
-private struct TrafficLight: View {
-    let color: Color
-    let symbol: String
-    let showSymbol: Bool
-    let action: () -> Void
-    @State private var hovering = false
-
-    var body: some View {
-        Button(action: action) {
-            ZStack {
-                Circle().fill(color)
-                Circle().stroke(.black.opacity(0.18), lineWidth: 0.5)
-                if showSymbol {
-                    Image(systemName: symbol)
-                        .font(.system(size: 6, weight: .heavy))
-                        .foregroundStyle(.black.opacity(0.55))
-                }
-            }
-            .frame(width: 12, height: 12)
-        }
-        .buttonStyle(.plain)
-    }
-}

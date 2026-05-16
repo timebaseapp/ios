@@ -48,7 +48,7 @@ struct ClockListView: View {
         }
         .sheet(isPresented: $showAbout) {
             AboutSheet()
-                .presentationDetents([.medium, .large])
+                .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $showUpNext) {

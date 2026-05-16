@@ -1,83 +1,141 @@
 #!/usr/bin/env python3
 """
-Generates AppIcon PNGs for the Timebase app at all required iOS sizes.
-The icon is the day/night terminator: a circle bisected by a diagonal,
-warm (left/top) and cool (right/bottom).
+Generates the Timebase app icon — a frozen frame of the world clock itself.
+
+Full-bleed (no inner circle, no padding). Five horizontal bands of the
+time-of-day palette stacked top-to-bottom, smoothly interpolated, with the
+same paper-grain texture used inside the app. iOS handles the corner
+rounding; we just fill the square.
 """
-
 from PIL import Image, ImageDraw
-import json
+import math
 import os
+import random
 
-OUT_DIR = os.path.join(os.path.dirname(__file__), "..", "Sources/Timebase/Assets.xcassets/AppIcon.appiconset")
+random.seed(7)
 
-# Anchor colors (matching the OKLCH palette anchors at 12h and 23h).
-WARM = (240, 178, 112)   # #F0B270 — soft amber, midday
-COOL = (42, 47, 74)      # #2A2F4A — indigo, night
+OUT_DIR = os.path.join(
+    os.path.dirname(__file__),
+    "..", "Sources/Timebase/Assets.xcassets/AppIcon.appiconset",
+)
+WEB_SVG = os.path.join(os.path.dirname(__file__), "..", "..", "web/icon.svg")
+SIZE = 1024
 
-# Marketing icon must be 1024x1024 (App Store). iOS auto-generates sizes from this in modern Xcode.
-SIZES = [
-    (1024, "icon-1024.png", "1x", "ios-marketing", "1024x1024"),
+# Hand-picked anchors from the in-app palette. Top = bright morning.
+# Bottom = deep night. The mid-bands cover the warm afternoon → dusk arc.
+BANDS = [
+    (0.00, (0xF8, 0xE5, 0xBC)),  # buttery morning
+    (0.22, (0xF8, 0xC7, 0x88)),  # midday peach-gold
+    (0.45, (0xD8, 0x92, 0x55)),  # golden afternoon
+    (0.68, (0xA5, 0x50, 0x48)),  # dusk rose
+    (0.86, (0x5A, 0x49, 0x60)),  # twilight purple
+    (1.00, (0x1E, 0x25, 0x38)),  # midnight indigo
 ]
 
 
-def render_icon(size_px: int) -> Image.Image:
-    """Render the bisected-circle icon at the given pixel size."""
-    img = Image.new("RGBA", (size_px, size_px), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
+def lerp(a, b, t):
+    return tuple(int(a[i] + (b[i] - a[i]) * t) for i in range(3))
 
-    # 1. Solid warm background (will be clipped to circle).
-    draw.rectangle([0, 0, size_px, size_px], fill=WARM)
 
-    # 2. Cool side — diagonal polygon. Offset slightly to evoke a moment
-    #    (late afternoon: terminator past noon, sweeping toward dusk).
-    #    Diagonal runs top-right → bottom-left, shifted right.
-    offset = int(size_px * 0.15)  # how far past center the terminator is
-    poly = [
-        (size_px, 0),
-        (size_px, size_px),
-        (int(size_px * 0.40) + offset, size_px),
-        (int(size_px * 0.55) + offset, 0),
-    ]
-    draw.polygon(poly, fill=COOL)
+def color_at(y_frac):
+    """Smooth piecewise-linear interp through BANDS for a fractional y."""
+    for i in range(len(BANDS) - 1):
+        y0, c0 = BANDS[i]
+        y1, c1 = BANDS[i + 1]
+        if y0 <= y_frac <= y1:
+            t = (y_frac - y0) / (y1 - y0)
+            # Ease for slightly painterly transitions (smoothstep).
+            t = t * t * (3 - 2 * t)
+            return lerp(c0, c1, t)
+    return BANDS[-1][1]
 
-    # 3. Clip to circle by masking.
-    mask = Image.new("L", (size_px, size_px), 0)
-    mdraw = ImageDraw.Draw(mask)
-    pad = int(size_px * 0.012)  # tiny inset so the circle isn't clipped by pixel edges
-    mdraw.ellipse([pad, pad, size_px - pad, size_px - pad], fill=255)
 
-    out = Image.new("RGBA", (size_px, size_px), (0, 0, 0, 0))
-    out.paste(img, (0, 0), mask)
+def render_icon(size: int) -> Image.Image:
+    img = Image.new("RGB", (size, size), (0, 0, 0))
+    px = img.load()
+    # Two-pass for performance: compute row color once per scanline (since
+    # color is purely a function of y), then write it across the row.
+    for y in range(size):
+        c = color_at(y / (size - 1))
+        for x in range(size):
+            # Subtle in-band shading: slight darkening toward bottom of each
+            # band gives a painted feel. Use a small high-frequency wobble.
+            shade = 1.0 - 0.04 * math.sin(y / size * math.pi * 18)
+            px[x, y] = (
+                max(0, min(255, int(c[0] * shade))),
+                max(0, min(255, int(c[1] * shade))),
+                max(0, min(255, int(c[2] * shade))),
+            )
+
+    # Paper grain — additive noise, matches the in-app texture intensity.
+    grain = Image.new("L", (size, size), 0)
+    gp = grain.load()
+    for y in range(size):
+        for x in range(size):
+            n = int(random.gauss(0, 18))
+            gp[x, y] = max(0, min(255, 128 + n))
+
+    # Composite grain via 'overlay' blend at ~30% strength.
+    out = Image.new("RGB", (size, size))
+    op = out.load()
+    ip = img.load()
+    gp = grain.load()
+    for y in range(size):
+        for x in range(size):
+            r, g, b = ip[x, y]
+            n = gp[x, y] / 255.0
+            # Standard overlay blend formula
+            def blend(c):
+                cf = c / 255.0
+                if n < 0.5:
+                    v = 2 * cf * n
+                else:
+                    v = 1 - 2 * (1 - cf) * (1 - n)
+                # Mix the blended value back with the original at 30%.
+                return int(max(0, min(255, (cf * 0.70 + v * 0.30) * 255)))
+            op[x, y] = (blend(r), blend(g), blend(b))
+
     return out
+
+
+def write_svg_mirror():
+    """A simple SVG that mirrors the icon for use as web favicon."""
+    stops = "\n".join(
+        f'    <stop offset="{pct*100:.0f}%" stop-color="#{c[0]:02X}{c[1]:02X}{c[2]:02X}"/>'
+        for pct, c in BANDS
+    )
+    svg = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="t" x1="0" y1="0" x2="0" y2="1">
+{stops}
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#t)"/>
+</svg>
+'''
+    with open(WEB_SVG, "w") as f:
+        f.write(svg)
+    print(f"wrote {WEB_SVG}")
 
 
 def main():
     os.makedirs(OUT_DIR, exist_ok=True)
-    for size_px, fname, *_ in SIZES:
-        img = render_icon(size_px)
-        out_path = os.path.join(OUT_DIR, fname)
-        img.save(out_path, "PNG", optimize=True)
-        print(f"wrote {out_path}")
+    img = render_icon(SIZE)
+    out_path = os.path.join(OUT_DIR, "icon-1024.png")
+    img.save(out_path, "PNG", optimize=True)
+    print(f"wrote {out_path}")
 
-    # Contents.json describing the single-size asset catalog (iOS 14+ accepts
-    # one 1024 image and renders all other sizes automatically).
-    contents = {
-        "images": [
-            {
-                "filename": "icon-1024.png",
-                "idiom": "universal",
-                "platform": "ios",
-                "size": "1024x1024",
-            }
-        ],
-        "info": {"author": "xcode", "version": 1},
-    }
-    contents_path = os.path.join(OUT_DIR, "Contents.json")
-    with open(contents_path, "w") as f:
-        json.dump(contents, f, indent=2)
-        f.write("\n")
-    print(f"wrote {contents_path}")
+    contents = '''{
+  "images" : [
+    { "filename" : "icon-1024.png", "idiom" : "universal", "platform" : "ios", "size" : "1024x1024" }
+  ],
+  "info" : { "author" : "xcode", "version" : 1 }
+}
+'''
+    with open(os.path.join(OUT_DIR, "Contents.json"), "w") as f:
+        f.write(contents)
+
+    write_svg_mirror()
 
 
 if __name__ == "__main__":
