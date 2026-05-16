@@ -42,7 +42,6 @@ struct CityRow: View {
                 .fill(.primary.opacity(0.06))
                 .frame(height: 0.5)
         }
-        .animation(.easeOut(duration: 0.3), value: gradient)
     }
 
     @ViewBuilder
