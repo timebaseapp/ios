@@ -21,6 +21,8 @@ targets:
       - path: Sources/Timebase/Assets.xcassets
         optional: true
       - path: Sources/Timebase/Resources/cities.json
+      - path: Sources/Timebase/Resources/Fonts
+        buildPhase: resources
     info:
       path: Sources/Timebase/Info.plist
       properties:
@@ -34,6 +36,9 @@ targets:
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         UIUserInterfaceStyle: Automatic
+        UIAppFonts:
+          - CrimsonText-SemiBold.ttf
+          - DepartureMono-Regular.otf
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: cc.timebase.ios

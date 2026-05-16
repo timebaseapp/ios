@@ -12,30 +12,30 @@ struct ClockListView: View {
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
-        VStack(spacing: 0) {
-            ForEach(store.orderedCities) { city in
-                CityRow(city: city)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .onTapGesture { detailCity = city }
-                    .contextMenu {
-                        if city.id != store.homeCityId {
-                            Button("Make home") { store.makeHome(cityId: city.id) }
-                            Button("Remove", role: .destructive) { store.remove(cityId: city.id) }
+        ZStack(alignment: .bottom) {
+            VStack(spacing: 0) {
+                ForEach(store.orderedCities) { city in
+                    CityRow(city: city)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .onTapGesture { detailCity = city }
+                        .contextMenu {
+                            if city.id != store.homeCityId {
+                                Button("Make home") { store.makeHome(cityId: city.id) }
+                                Button("Remove", role: .destructive) { store.remove(cityId: city.id) }
+                            }
+                            Button("Details") { detailCity = city }
                         }
-                        Button("Details") { detailCity = city }
-                    }
+                }
             }
-        }
-        .ignoresSafeArea(edges: .top)
-        .universalScrub()
-        .safeAreaInset(edge: .bottom, spacing: 0) {
+            .ignoresSafeArea()
+            .universalScrub()
+
             Dock(
                 onAbout: { showAbout = true },
                 onAdd:   { showAddSheet = true },
                 onMiddleTap: { handleMiddleTap() }
             )
-            .padding(.top, 10)
-            .padding(.bottom, 10)
+            .padding(.bottom, 18)
         }
         .onReceive(timer) { _ in tick = Date() }
         .sheet(item: $detailCity) { city in
@@ -80,7 +80,7 @@ private struct Dock: View {
                     .italic()
             }
 
-            if store.scrubOffsetMinutes != 0 {
+            if scrubMinutes != 0 {
                 TextPill(action: onMiddleTap, weight: .heavy) {
                     Text(scrubDeltaText)
                         .monospacedDigit()
@@ -99,8 +99,14 @@ private struct Dock: View {
                     .font(.system(size: 14, weight: .heavy))
             }
         }
-        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: store.scrubOffsetMinutes != 0)
+        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: scrubMinutes != 0)
         .animation(.spring(response: 0.35, dampingFraction: 0.85), value: nextEvent?.id)
+    }
+
+    /// Sub-minute drag jitter that rounds to 0 shouldn't trip the pill.
+    private var scrubMinutes: Int {
+        let rounded = Int(store.scrubOffsetMinutes.rounded())
+        return Swift.abs(rounded) >= 1 ? rounded : 0
     }
 
     private var nextEvent: UpcomingEvent? {
@@ -108,7 +114,7 @@ private struct Dock: View {
     }
 
     private var scrubDeltaText: String {
-        let minutes = Int(store.scrubOffsetMinutes.rounded())
+        let minutes = scrubMinutes
         let sign = minutes >= 0 ? "+" : "−"
         let abs = Swift.abs(minutes)
         let days = abs / 1440
@@ -158,25 +164,61 @@ private struct TextPill<Content: View>: View {
     }
 }
 
-/// Liquid-Glass-style pill: ultraThinMaterial on iOS 26+ automatically renders
-/// as Liquid Glass; on earlier iOS it's the familiar blurred translucency.
-/// A thin highlight + outline keeps it tactile.
+/// Skeuomorphic pill — matches web: warm cream gradient (Braun/TE feel),
+/// inset highlight at top edge, outer cast shadow, paper-grain overlay.
+/// Dark mode uses a warm walnut variant.
 private struct GlassPillButtonStyle: ButtonStyle {
+    @Environment(\.colorScheme) private var scheme
+
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .foregroundStyle(.primary)
+        let dark = scheme == .dark
+        let topFill = dark ? Color(red: 0.18, green: 0.165, blue: 0.14)
+                           : Color(red: 0.961, green: 0.949, blue: 0.925)
+        let botFill = dark ? Color(red: 0.10, green: 0.090, blue: 0.078)
+                           : Color(red: 0.878, green: 0.855, blue: 0.816)
+        let edge   = dark ? Color.black.opacity(0.55) : Color.black.opacity(0.18)
+        let textColor = dark ? Color(red: 0.94, green: 0.92, blue: 0.886)
+                             : Color(red: 0.11, green: 0.11, blue: 0.12)
+
+        return configuration.label
+            .foregroundStyle(textColor)
             .background {
-                Capsule(style: .continuous)
-                    .fill(.ultraThinMaterial)
-                    .overlay {
-                        Capsule(style: .continuous)
-                            .strokeBorder(.white.opacity(0.18), lineWidth: 0.5)
-                    }
-                    .shadow(color: .black.opacity(0.18), radius: 12, y: 4)
-                    .shadow(color: .black.opacity(0.08), radius: 1, y: 1)
+                ZStack {
+                    Capsule(style: .continuous)
+                        .fill(LinearGradient(colors: [topFill, botFill],
+                                             startPoint: .top, endPoint: .bottom))
+
+                    // Paper grain
+                    Image("grain")
+                        .resizable(resizingMode: .tile)
+                        .blendMode(.overlay)
+                        .opacity(0.55)
+                        .clipShape(Capsule(style: .continuous))
+                        .allowsHitTesting(false)
+
+                    // Outer edge + inner highlight
+                    Capsule(style: .continuous)
+                        .strokeBorder(edge, lineWidth: 0.5)
+                    Capsule(style: .continuous)
+                        .inset(by: 1)
+                        .stroke(
+                            LinearGradient(
+                                colors: [
+                                    .white.opacity(dark ? 0.10 : 0.55),
+                                    .white.opacity(0)
+                                ],
+                                startPoint: .top, endPoint: .center
+                            ),
+                            lineWidth: 1
+                        )
+                        .allowsHitTesting(false)
+                }
+                .shadow(color: .black.opacity(dark ? 0.35 : 0.10), radius: 4, y: 2)
+                .shadow(color: .black.opacity(dark ? 0.20 : 0.06), radius: 1, y: 1)
             }
-            .scaleEffect(configuration.isPressed ? 0.96 : 1)
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .offset(y: configuration.isPressed ? 0.5 : 0)
+            .animation(.easeOut(duration: 0.10), value: configuration.isPressed)
     }
 }
 

@@ -26,6 +26,11 @@
 	<string>Timebase uses your location to set your home city.</string>
 	<key>NSUbiquitousKeyValueStoreUsageDescription</key>
 	<string>Timebase syncs your cities across your devices via iCloud.</string>
+	<key>UIAppFonts</key>
+	<array>
+		<string>CrimsonText-SemiBold.ttf</string>
+		<string>DepartureMono-Regular.otf</string>
+	</array>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UISupportedInterfaceOrientations</key>
