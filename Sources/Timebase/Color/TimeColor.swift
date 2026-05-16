@@ -12,39 +12,40 @@ enum TimeColor {
         let oklch: OKLCH
     }
 
-    // Alto's Adventure / Pasture-inspired palette: muted earthy tones, warm
-    // horizon glow at dawn/dusk, long cool stretches at night. Each anchor was
-    // chosen so neighbors interpolate to painterly mid-tones — no neon punch.
+    // Palette philosophy: night feels calm and rested (muted, low chroma, cool);
+    // daytime feels bright and alive (high luminance, warm peach/honey/amber
+    // hues, moderate chroma — never neon). Sunrise/sunset bridge the two
+    // worlds with rising/falling warmth.
     static let light: [Anchor] = [
-        .init(hour: 0,    oklch: OKLCH(hex: "1E2538")),  // deep midnight indigo
-        .init(hour: 3,    oklch: OKLCH(hex: "2A3548")),  // still night, faint lift
-        .init(hour: 5.5,  oklch: OKLCH(hex: "5C5A6E")),  // pre-dawn lavender-grey
-        .init(hour: 6.5,  oklch: OKLCH(hex: "C4B098")),  // first-light cream-clay
-        .init(hour: 8,    oklch: OKLCH(hex: "D9CDB4")),  // morning cream-sage
-        .init(hour: 10,   oklch: OKLCH(hex: "C5C3A5")),  // pale olive-sage
-        .init(hour: 12,   oklch: OKLCH(hex: "D9C898")),  // warm sand
-        .init(hour: 14,   oklch: OKLCH(hex: "C9A874")),  // sun-baked sand
-        .init(hour: 16,   oklch: OKLCH(hex: "C4905E")),  // golden afternoon
-        .init(hour: 18,   oklch: OKLCH(hex: "B07248")),  // dusk amber
-        .init(hour: 19.5, oklch: OKLCH(hex: "8A5440")),  // deep sunset terracotta
-        .init(hour: 21,   oklch: OKLCH(hex: "4A4458")),  // twilight purple-grey
-        .init(hour: 23,   oklch: OKLCH(hex: "26304A")),  // settling night
+        .init(hour: 0,    oklch: OKLCH(hex: "1E2538")),  // midnight indigo, calm
+        .init(hour: 3,    oklch: OKLCH(hex: "2A3548")),  // still night
+        .init(hour: 5.5,  oklch: OKLCH(hex: "6A5F78")),  // pre-dawn lavender
+        .init(hour: 6.5,  oklch: OKLCH(hex: "F2DBA8")),  // first light, warm cream
+        .init(hour: 8,    oklch: OKLCH(hex: "F8E5BC")),  // bright buttery morning
+        .init(hour: 10,   oklch: OKLCH(hex: "F8D89E")),  // mid-morning honey
+        .init(hour: 12,   oklch: OKLCH(hex: "F8C788")),  // midday peach-gold
+        .init(hour: 14,   oklch: OKLCH(hex: "ECB070")),  // sun-warmed honey
+        .init(hour: 16,   oklch: OKLCH(hex: "D89255")),  // golden afternoon
+        .init(hour: 18,   oklch: OKLCH(hex: "C56E48")),  // dusk rose-amber
+        .init(hour: 19.5, oklch: OKLCH(hex: "A55048")),  // sunset dusty rose
+        .init(hour: 21,   oklch: OKLCH(hex: "5A4960")),  // twilight purple
+        .init(hour: 23,   oklch: OKLCH(hex: "2A3550")),  // settling night
         .init(hour: 24,   oklch: OKLCH(hex: "1E2538")),
     ]
 
     static let dark: [Anchor] = [
         .init(hour: 0,    oklch: OKLCH(hex: "0F1322")),
         .init(hour: 3,    oklch: OKLCH(hex: "171F30")),
-        .init(hour: 5.5,  oklch: OKLCH(hex: "3A3848")),
-        .init(hour: 6.5,  oklch: OKLCH(hex: "7A6B58")),
-        .init(hour: 8,    oklch: OKLCH(hex: "8A806B")),
-        .init(hour: 10,   oklch: OKLCH(hex: "7E7C66")),
-        .init(hour: 12,   oklch: OKLCH(hex: "8C7E5C")),
-        .init(hour: 14,   oklch: OKLCH(hex: "836846")),
-        .init(hour: 16,   oklch: OKLCH(hex: "7C5638")),
-        .init(hour: 18,   oklch: OKLCH(hex: "6E4530")),
-        .init(hour: 19.5, oklch: OKLCH(hex: "5A3528")),
-        .init(hour: 21,   oklch: OKLCH(hex: "302C3A")),
+        .init(hour: 5.5,  oklch: OKLCH(hex: "423D52")),
+        .init(hour: 6.5,  oklch: OKLCH(hex: "A8916A")),
+        .init(hour: 8,    oklch: OKLCH(hex: "B5A076")),
+        .init(hour: 10,   oklch: OKLCH(hex: "B59866")),
+        .init(hour: 12,   oklch: OKLCH(hex: "B58A58")),
+        .init(hour: 14,   oklch: OKLCH(hex: "A87648")),
+        .init(hour: 16,   oklch: OKLCH(hex: "996038")),
+        .init(hour: 18,   oklch: OKLCH(hex: "884A30")),
+        .init(hour: 19.5, oklch: OKLCH(hex: "703230")),
+        .init(hour: 21,   oklch: OKLCH(hex: "382E3A")),
         .init(hour: 23,   oklch: OKLCH(hex: "171F30")),
         .init(hour: 24,   oklch: OKLCH(hex: "0F1322")),
     ]
