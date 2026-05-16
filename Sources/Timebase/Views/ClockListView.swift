@@ -13,8 +13,8 @@ struct ClockListView: View {
     var body: some View {
         ZStack {
             VStack(spacing: 0) {
-                ForEach(store.cities) { city in
-                    CityRow(city: city, isHome: city.id == store.homeCityId)
+                ForEach(store.orderedCities) { city in
+                    CityRow(city: city)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .onTapGesture { detailCity = city }
                         .contextMenu {

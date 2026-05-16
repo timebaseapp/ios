@@ -2,7 +2,6 @@ import SwiftUI
 
 struct CityRow: View {
     let city: City
-    let isHome: Bool
     @Environment(TimebaseStore.self) private var store
     @Environment(\.colorScheme) private var colorScheme
 
@@ -10,7 +9,7 @@ struct CityRow: View {
         let displayDate = store.displayDate
         let hour = fractionalHour(in: city.timeZoneObject, date: displayDate)
         let scrubMute: Double = store.scrubOffsetMinutes == 0 ? 0 : 0.5
-        let bg = Color(TimeColor.background(forHour: hour, scheme: colorScheme, scrubMute: scrubMute).cgColor!)
+        let gradient = TimeColor.backgroundGradient(forHour: hour, scheme: colorScheme, scrubMute: scrubMute)
         let fg = TimeColor.foreground(forHour: hour, scheme: colorScheme)
 
         HStack(alignment: .firstTextBaseline, spacing: 12) {
@@ -23,22 +22,27 @@ struct CityRow: View {
         .foregroundStyle(fg)
         .padding(.horizontal, 28)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(bg)
-        .overlay(alignment: .leading) {
-            if isHome {
-                Rectangle()
-                    .fill(fg.opacity(0.85))
-                    .frame(width: 2)
-                    .padding(.vertical, 14)
-                    .padding(.leading, 0)
+        .background(
+            ZStack {
+                LinearGradient(colors: gradient, startPoint: .top, endPoint: .bottom)
+                Image("grain")
+                    .resizable(resizingMode: .tile)
+                    .blendMode(.softLight)
+                    .opacity(0.95)
+                    .allowsHitTesting(false)
+                Image("grain")
+                    .resizable(resizingMode: .tile)
+                    .blendMode(.overlay)
+                    .opacity(0.35)
+                    .allowsHitTesting(false)
             }
-        }
+        )
         .overlay(alignment: .top) {
             Rectangle()
-                .fill(.primary.opacity(0.10))
+                .fill(.primary.opacity(0.06))
                 .frame(height: 0.5)
         }
-        .animation(.easeOut(duration: 0.3), value: bg)
+        .animation(.easeOut(duration: 0.3), value: gradient)
     }
 
     @ViewBuilder

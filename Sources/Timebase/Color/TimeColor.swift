@@ -12,28 +12,41 @@ enum TimeColor {
         let oklch: OKLCH
     }
 
+    // Alto's Adventure / Pasture-inspired palette: muted earthy tones, warm
+    // horizon glow at dawn/dusk, long cool stretches at night. Each anchor was
+    // chosen so neighbors interpolate to painterly mid-tones — no neon punch.
     static let light: [Anchor] = [
-        .init(hour: 0,  oklch: OKLCH(hex: "2A2F4A")),
-        .init(hour: 4,  oklch: OKLCH(hex: "3D4A6E")),
-        .init(hour: 6,  oklch: OKLCH(hex: "E8C77F")),
-        .init(hour: 8,  oklch: OKLCH(hex: "F4E4C1")),
-        .init(hour: 12, oklch: OKLCH(hex: "F0B270")),
-        .init(hour: 16, oklch: OKLCH(hex: "D27A4A")),
-        .init(hour: 19, oklch: OKLCH(hex: "A14633")),
-        .init(hour: 21, oklch: OKLCH(hex: "5C3A5E")),
-        .init(hour: 24, oklch: OKLCH(hex: "2A2F4A")),
+        .init(hour: 0,    oklch: OKLCH(hex: "1E2538")),  // deep midnight indigo
+        .init(hour: 3,    oklch: OKLCH(hex: "2A3548")),  // still night, faint lift
+        .init(hour: 5.5,  oklch: OKLCH(hex: "5C5A6E")),  // pre-dawn lavender-grey
+        .init(hour: 6.5,  oklch: OKLCH(hex: "C4B098")),  // first-light cream-clay
+        .init(hour: 8,    oklch: OKLCH(hex: "D9CDB4")),  // morning cream-sage
+        .init(hour: 10,   oklch: OKLCH(hex: "C5C3A5")),  // pale olive-sage
+        .init(hour: 12,   oklch: OKLCH(hex: "D9C898")),  // warm sand
+        .init(hour: 14,   oklch: OKLCH(hex: "C9A874")),  // sun-baked sand
+        .init(hour: 16,   oklch: OKLCH(hex: "C4905E")),  // golden afternoon
+        .init(hour: 18,   oklch: OKLCH(hex: "B07248")),  // dusk amber
+        .init(hour: 19.5, oklch: OKLCH(hex: "8A5440")),  // deep sunset terracotta
+        .init(hour: 21,   oklch: OKLCH(hex: "4A4458")),  // twilight purple-grey
+        .init(hour: 23,   oklch: OKLCH(hex: "26304A")),  // settling night
+        .init(hour: 24,   oklch: OKLCH(hex: "1E2538")),
     ]
 
     static let dark: [Anchor] = [
-        .init(hour: 0,  oklch: OKLCH(hex: "0F1228")),
-        .init(hour: 4,  oklch: OKLCH(hex: "1A2342")),
-        .init(hour: 6,  oklch: OKLCH(hex: "8B6E3F")),
-        .init(hour: 8,  oklch: OKLCH(hex: "A89770")),
-        .init(hour: 12, oklch: OKLCH(hex: "A87440")),
-        .init(hour: 16, oklch: OKLCH(hex: "8B4F2E")),
-        .init(hour: 19, oklch: OKLCH(hex: "6B2E1E")),
-        .init(hour: 21, oklch: OKLCH(hex: "3A1F3D")),
-        .init(hour: 24, oklch: OKLCH(hex: "0F1228")),
+        .init(hour: 0,    oklch: OKLCH(hex: "0F1322")),
+        .init(hour: 3,    oklch: OKLCH(hex: "171F30")),
+        .init(hour: 5.5,  oklch: OKLCH(hex: "3A3848")),
+        .init(hour: 6.5,  oklch: OKLCH(hex: "7A6B58")),
+        .init(hour: 8,    oklch: OKLCH(hex: "8A806B")),
+        .init(hour: 10,   oklch: OKLCH(hex: "7E7C66")),
+        .init(hour: 12,   oklch: OKLCH(hex: "8C7E5C")),
+        .init(hour: 14,   oklch: OKLCH(hex: "836846")),
+        .init(hour: 16,   oklch: OKLCH(hex: "7C5638")),
+        .init(hour: 18,   oklch: OKLCH(hex: "6E4530")),
+        .init(hour: 19.5, oklch: OKLCH(hex: "5A3528")),
+        .init(hour: 21,   oklch: OKLCH(hex: "302C3A")),
+        .init(hour: 23,   oklch: OKLCH(hex: "171F30")),
+        .init(hour: 24,   oklch: OKLCH(hex: "0F1322")),
     ]
 
     /// Returns the background color for a city at the given fractional hour.
@@ -43,6 +56,19 @@ enum TimeColor {
         var lch = interpolate(anchors: anchors, hour: hour)
         if scrubMute > 0 { lch.c *= (1 - scrubMute * 0.6) }
         return Color(lch.toRGBA(alpha: 1))
+    }
+
+    /// Returns a two-stop gradient (lighter top, base bottom) for "almost solid
+    /// but breathing" row backgrounds — pure solid feels flat next to grain.
+    static func backgroundGradient(forHour hour: Double, scheme: ColorScheme, scrubMute: Double = 0) -> [Color] {
+        let anchors = (scheme == .dark) ? dark : light
+        var base = interpolate(anchors: anchors, hour: hour)
+        if scrubMute > 0 { base.c *= (1 - scrubMute * 0.6) }
+        // Top: slightly lighter (+L 0.04), faint chroma drop for airiness.
+        let top = OKLCH(l: min(1, base.l + 0.035), c: base.c * 0.95, h: base.h)
+        // Bottom: a touch deeper for landed weight.
+        let bot = OKLCH(l: max(0, base.l - 0.025), c: base.c, h: base.h)
+        return [Color(top.toRGBA(alpha: 1)), Color(bot.toRGBA(alpha: 1))]
     }
 
     /// Returns the appropriate foreground color (near-white or near-black) for

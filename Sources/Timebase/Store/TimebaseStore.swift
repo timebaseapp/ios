@@ -59,6 +59,21 @@ final class TimebaseStore {
         cities.first(where: { $0.id == homeCityId }) ?? cities.first
     }
 
+    /// Home stays at row 1. Other cities sort by their absolute UTC offset
+    /// ascending — this produces a continuous east-bound progression around
+    /// the globe and keeps the row-to-row color transitions gentle.
+    var orderedCities: [City] {
+        guard let home = homeCity else { return cities }
+        let others = cities.filter { $0.id != home.id }
+        let sorted = others.sorted { a, b in
+            let aOff = a.timeZoneObject.secondsFromGMT(for: displayDate)
+            let bOff = b.timeZoneObject.secondsFromGMT(for: displayDate)
+            if aOff == bOff { return a.name < b.name }
+            return aOff < bOff
+        }
+        return [home] + sorted
+    }
+
     /// The display "now" — real time plus the user's scrub offset.
     var displayDate: Date {
         Date().addingTimeInterval(scrubOffsetMinutes * 60)
