@@ -5,6 +5,10 @@ struct CityRow: View {
     @Environment(TimebaseStore.self) private var store
     @Environment(\.colorScheme) private var colorScheme
 
+    private var displayName: String {
+        city.id == store.homeCityId ? "🏠  \(city.name)" : city.name
+    }
+
     var body: some View {
         let displayDate = store.displayDate
         let hour = fractionalHour(in: city.timeZoneObject, date: displayDate)
@@ -13,7 +17,7 @@ struct CityRow: View {
         let fg = TimeColor.foreground(forHour: hour, scheme: colorScheme)
 
         HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Text(city.name)
+            Text(displayName)
                 .font(.system(size: 22, weight: .regular))
                 .kerning(-0.1)
             Spacer(minLength: 8)
