@@ -1,0 +1,71 @@
+name: Timebase
+options:
+  bundleIdPrefix: cc.timebase
+  deploymentTarget:
+    iOS: "17.0"
+  xcodeVersion: "16"
+  generateEmptyDirectories: true
+  createIntermediateGroups: true
+
+settings:
+  base:
+    ENABLE_USER_SCRIPT_SANDBOXING: "NO"
+
+targets:
+  Timebase:
+    type: application
+    platform: iOS
+    sources:
+      - Sources/Timebase
+    resources:
+      - path: Sources/Timebase/Assets.xcassets
+        optional: true
+      - path: Sources/Timebase/Resources/cities.json
+    info:
+      path: Sources/Timebase/Info.plist
+      properties:
+        CFBundleDisplayName: Timebase
+        CFBundleShortVersionString: "1.0.0"
+        CFBundleVersion: "1"
+        UILaunchScreen: {}
+        NSCalendarsFullAccessUsageDescription: "Timebase shows your upcoming events as live countdowns."
+        NSLocationWhenInUseUsageDescription: "Timebase uses your location to set your home city."
+        NSUbiquitousKeyValueStoreUsageDescription: "Timebase syncs your cities across your devices via iCloud."
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UIUserInterfaceStyle: Automatic
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: cc.timebase.ios
+        SWIFT_VERSION: "6.0"
+        INFOPLIST_FILE: Sources/Timebase/Info.plist
+        TARGETED_DEVICE_FAMILY: "1"
+        CODE_SIGN_ENTITLEMENTS: Sources/Timebase/Timebase.entitlements
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        DEVELOPMENT_TEAM: VRNNS4H6XH
+
+  TimebaseTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - Tests/TimebaseTests
+    dependencies:
+      - target: Timebase
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: cc.timebase.ios.tests
+        SWIFT_VERSION: "6.0"
+
+schemes:
+  Timebase:
+    build:
+      targets:
+        Timebase: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - TimebaseTests
+    archive:
+      config: Release
