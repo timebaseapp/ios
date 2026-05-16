@@ -6,41 +6,37 @@ struct ClockListView: View {
     @State private var tick = Date()
     @State private var detailCity: City?
     @State private var showAddSheet = false
-    @State private var showSettings = false
+    @State private var showAbout = false
+    @State private var showUpNext = false
 
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
-        ZStack {
-            VStack(spacing: 0) {
-                ForEach(store.orderedCities) { city in
-                    CityRow(city: city)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .onTapGesture { detailCity = city }
-                        .contextMenu {
-                            if city.id != store.homeCityId {
-                                Button("Make home") { store.makeHome(cityId: city.id) }
-                                Button("Remove", role: .destructive) { store.remove(cityId: city.id) }
-                            } else {
-                                Button("Add city") { showAddSheet = true }
-                                Button("Settings") { showSettings = true }
-                            }
-                            Button("Details") { detailCity = city }
+        VStack(spacing: 0) {
+            ForEach(store.orderedCities) { city in
+                CityRow(city: city)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .onTapGesture { detailCity = city }
+                    .contextMenu {
+                        if city.id != store.homeCityId {
+                            Button("Make home") { store.makeHome(cityId: city.id) }
+                            Button("Remove", role: .destructive) { store.remove(cityId: city.id) }
                         }
-                }
+                        Button("Details") { detailCity = city }
+                    }
             }
-            .ignoresSafeArea()
-            .universalScrub()
-
-            // Floating pill: scrub or next event.
-            VStack {
-                Spacer()
-                pillContent
-                    .padding(.bottom, 24)
-            }
-            .allowsHitTesting(true)
         }
-        .ignoresSafeArea()
+        .ignoresSafeArea(edges: .top)
+        .universalScrub()
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            Dock(
+                onAbout: { showAbout = true },
+                onAdd:   { showAddSheet = true },
+                onMiddleTap: { handleMiddleTap() }
+            )
+            .padding(.top, 10)
+            .padding(.bottom, 10)
+        }
         .onReceive(timer) { _ in tick = Date() }
         .sheet(item: $detailCity) { city in
             CityDetailSheet(city: city)
@@ -50,37 +46,65 @@ struct ClockListView: View {
         .sheet(isPresented: $showAddSheet) {
             AddCitySheet()
         }
-        .sheet(isPresented: $showSettings) {
-            SettingsSheet()
+        .sheet(isPresented: $showAbout) {
+            AboutSheet()
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showUpNext) {
+            UpNextView()
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
         }
     }
 
-    @ViewBuilder
-    private var pillContent: some View {
-        if store.scrubOffsetMinutes != 0 {
-            Button(action: { store.snapToNow() }) {
-                Text(scrubDeltaText)
-                    .font(.system(size: 13, weight: .heavy))
-                    .monospacedDigit()
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 10)
-                    .background(.regularMaterial, in: Capsule())
-                    .overlay(Capsule().stroke(.primary.opacity(0.15), lineWidth: 0.5))
+    private func handleMiddleTap() {
+        if store.scrubOffsetMinutes != 0 { store.snapToNow() }
+        else if !store.upcomingEvents.isEmpty { showUpNext = true }
+    }
+}
+
+// MARK: - Dock
+
+private struct Dock: View {
+    @Environment(TimebaseStore.self) private var store
+    let onAbout: () -> Void
+    let onAdd: () -> Void
+    let onMiddleTap: () -> Void
+
+    var body: some View {
+        HStack(spacing: 10) {
+            IconPill(action: onAbout) {
+                Text("i")
+                    .font(.system(size: 18, weight: .regular, design: .serif))
+                    .italic()
             }
-            .buttonStyle(.plain)
-            .transition(.opacity.combined(with: .scale(scale: 0.9)))
-        } else if let event = store.upcomingEvents.first, event.startDate > .now {
-            Button(action: { /* tab switch handled by parent */ }) {
-                Text("Next · \(nextEventDelta(event))")
-                    .font(.system(size: 13, weight: .medium))
-                    .monospacedDigit()
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 10)
-                    .background(.regularMaterial, in: Capsule())
-                    .overlay(Capsule().stroke(.primary.opacity(0.15), lineWidth: 0.5))
+
+            if store.scrubOffsetMinutes != 0 {
+                TextPill(action: onMiddleTap, weight: .heavy) {
+                    Text(scrubDeltaText)
+                        .monospacedDigit()
+                }
+                .transition(.scale(scale: 0.85).combined(with: .opacity))
+            } else if let event = nextEvent {
+                TextPill(action: onMiddleTap, weight: .medium) {
+                    Text("Next · \(nextEventDelta(event))")
+                        .monospacedDigit()
+                }
+                .transition(.scale(scale: 0.85).combined(with: .opacity))
             }
-            .buttonStyle(.plain)
+
+            IconPill(action: onAdd) {
+                Image(systemName: "plus")
+                    .font(.system(size: 14, weight: .heavy))
+            }
         }
+        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: store.scrubOffsetMinutes != 0)
+        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: nextEvent?.id)
+    }
+
+    private var nextEvent: UpcomingEvent? {
+        store.upcomingEvents.first(where: { $0.startDate > .now })
     }
 
     private var scrubDeltaText: String {
@@ -99,10 +123,64 @@ struct ClockListView: View {
     }
 
     private func nextEventDelta(_ event: UpcomingEvent) -> String {
-        let seconds = event.startDate.timeIntervalSince(.now)
-        return TimebaseFormatters.relative(seconds: seconds)
+        TimebaseFormatters.relative(seconds: event.startDate.timeIntervalSince(.now))
     }
 }
+
+// MARK: - Pill primitives
+
+private struct IconPill<Content: View>: View {
+    let action: () -> Void
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        Button(action: action) {
+            content()
+                .frame(width: 38, height: 38)
+        }
+        .buttonStyle(GlassPillButtonStyle())
+    }
+}
+
+private struct TextPill<Content: View>: View {
+    let action: () -> Void
+    let weight: Font.Weight
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        Button(action: action) {
+            content()
+                .font(.system(size: 13, weight: weight))
+                .padding(.horizontal, 16)
+                .frame(height: 38)
+        }
+        .buttonStyle(GlassPillButtonStyle())
+    }
+}
+
+/// Liquid-Glass-style pill: ultraThinMaterial on iOS 26+ automatically renders
+/// as Liquid Glass; on earlier iOS it's the familiar blurred translucency.
+/// A thin highlight + outline keeps it tactile.
+private struct GlassPillButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .foregroundStyle(.primary)
+            .background {
+                Capsule(style: .continuous)
+                    .fill(.ultraThinMaterial)
+                    .overlay {
+                        Capsule(style: .continuous)
+                            .strokeBorder(.white.opacity(0.18), lineWidth: 0.5)
+                    }
+                    .shadow(color: .black.opacity(0.18), radius: 12, y: 4)
+                    .shadow(color: .black.opacity(0.08), radius: 1, y: 1)
+            }
+            .scaleEffect(configuration.isPressed ? 0.96 : 1)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+    }
+}
+
+// MARK: - Shared formatter (kept here for reuse from previous version)
 
 enum TimebaseFormatters {
     static func relative(seconds: TimeInterval) -> String {

@@ -42,7 +42,17 @@ final class TimebaseStore {
     var hasCompletedOnboarding = false
 
     // MARK: - Transient
-    var scrubOffsetMinutes: Double = 0
+    /// Clamped to ±2 days. Beyond that, the time-of-day colors just repeat
+    /// and the delta becomes meaningless.
+    var scrubOffsetMinutes: Double = 0 {
+        didSet {
+            let bound = Self.scrubBoundMinutes
+            if scrubOffsetMinutes > bound { scrubOffsetMinutes = bound }
+            else if scrubOffsetMinutes < -bound { scrubOffsetMinutes = -bound }
+        }
+    }
+
+    static let scrubBoundMinutes: Double = 2 * 24 * 60
     var upcomingEvents: [UpcomingEvent] = []
     var calendarAccessGranted = false
 

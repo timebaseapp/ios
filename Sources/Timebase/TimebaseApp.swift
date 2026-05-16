@@ -25,28 +25,7 @@ struct RootView: View {
         if !store.hasCompletedOnboarding {
             OnboardingView()
         } else {
-            MainTabsView()
-        }
-    }
-}
-
-struct MainTabsView: View {
-    @Environment(TimebaseStore.self) private var store
-    @State private var selectedTab: Tab = .clock
-
-    enum Tab { case clock, upNext }
-
-    var body: some View {
-        TabView(selection: $selectedTab) {
             ClockListView()
-                .tabItem { Label("Clock", systemImage: "circle.lefthalf.filled") }
-                .tag(Tab.clock)
-
-            UpNextView()
-                .tabItem { Label("Up Next", systemImage: "calendar") }
-                .tag(Tab.upNext)
-                .badge(store.upcomingEventsCount)
         }
-        .tint(.primary)
     }
 }
