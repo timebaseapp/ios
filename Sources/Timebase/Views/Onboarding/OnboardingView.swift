@@ -137,6 +137,7 @@ private struct WordmarkScreen: View {
                         .foregroundStyle(.primary.opacity(0.6))
                         .padding(.vertical, 8)
                 }
+                .buttonStyle(.plain)
             }
             .padding(.bottom, 60)
         }
@@ -200,6 +201,7 @@ private struct GestureCalendarScreen: View {
                         .foregroundStyle(.primary.opacity(0.6))
                         .padding(.vertical, 8)
                 }
+                .buttonStyle(.plain)
             }
             .padding(.bottom, 56)
         }
