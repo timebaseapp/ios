@@ -5,10 +5,15 @@ struct ClockListView: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var tick = Date()
     @State private var detailCity: City?
-    @State private var pillVisible = false
-    @State private var pillFadeTask: Task<Void, Never>?
 
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+
+    /// Total vertical space the pill needs (height + bottom padding).
+    /// Reserved at the bottom of the last city when scrubbed so the pill
+    /// never obstructs row content.
+    private let pillReservedSpace: CGFloat = 38 + 18 + 4
+
+    private var pillVisible: Bool { store.scrubOffsetMinutes != 0 }
 
     var body: some View {
         // Outer GeometryReader reads the REAL safe area (the hosting
@@ -29,20 +34,11 @@ struct ClockListView: View {
                                 city: city,
                                 rowCount: cities.count,
                                 topContentInset: isFirst ? topSafe : 0,
-                                bottomContentInset: isLast ? botSafe : 0
+                                bottomContentInset: isLast
+                                    ? (botSafe + (pillVisible ? pillReservedSpace : 0))
+                                    : 0
                             )
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            // Double-tap snaps back to now — only when
-                            // scrubbed, so taps in the resting state still
-                            // open the city detail without the double-tap
-                            // recognition delay.
-                            .onTapGesture(count: 2) {
-                                guard store.scrubOffsetMinutes != 0 else {
-                                    detailCity = city
-                                    return
-                                }
-                                store.snapToNow()
-                            }
                             .onTapGesture { detailCity = city }
                             .contextMenu {
                                 if city.id != store.homeCityId {
@@ -80,43 +76,18 @@ struct ClockListView: View {
                 .transition(.asymmetric(
                     insertion: .scale(scale: 0.85).combined(with: .opacity)
                         .animation(.spring(response: 0.35, dampingFraction: 0.85)),
-                    removal: .opacity.animation(.easeOut(duration: 0.9))
+                    removal: .opacity.animation(.easeOut(duration: 0.6))
                 ))
             }
         }
+        .animation(.easeInOut(duration: 0.35), value: pillVisible)
         .onReceive(timer) { _ in tick = Date() }
-        .onChange(of: scrubMinutesAbs) { _, newValue in
-            schedulePill(scrubbed: newValue >= 1)
-        }
         .sheet(item: $detailCity) { city in
             CityDetailSheet(city: city)
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
         }
         }   // end GeometryReader
-    }
-
-    private var scrubMinutesAbs: Int {
-        Swift.abs(Int(store.scrubOffsetMinutes.rounded()))
-    }
-
-    /// While the user is scrubbing the pill is visible. When scrubbing
-    /// settles (no change for ~2s), the pill fades out. If the user resumes,
-    /// the pill comes right back.
-    private func schedulePill(scrubbed: Bool) {
-        pillFadeTask?.cancel()
-        if scrubbed {
-            pillVisible = true
-            pillFadeTask = Task { @MainActor in
-                try? await Task.sleep(nanoseconds: 2_000_000_000)
-                if !Task.isCancelled && scrubMinutesAbs >= 1 {
-                    pillVisible = false
-                }
-            }
-        } else {
-            // Scrubbed back to now — hide pill immediately.
-            pillVisible = false
-        }
     }
 
     private var scrubDeltaText: String {
