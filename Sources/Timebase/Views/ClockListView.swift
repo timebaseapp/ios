@@ -5,6 +5,8 @@ struct ClockListView: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var tick = Date()
     @State private var detailCity: City?
+    @State private var pillVisible = false
+    @State private var pillFadeTask: Task<Void, Never>?
 
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
@@ -27,8 +29,9 @@ struct ClockListView: View {
             .ignoresSafeArea()
             .universalScrub()
 
-            // Scrub-delta pill — only floating element, only when offset != 0.
-            if Swift.abs(Int(store.scrubOffsetMinutes.rounded())) >= 1 {
+            // Scrub-delta pill — appears while scrubbed, auto-fades ~2s after
+            // user stops scrubbing so it stops overlapping row content.
+            if pillVisible {
                 Button {
                     Haptics.buttonPressed()
                     store.snapToNow()
@@ -44,12 +47,38 @@ struct ClockListView: View {
                 .transition(.scale(scale: 0.85).combined(with: .opacity))
             }
         }
-        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: Swift.abs(Int(store.scrubOffsetMinutes.rounded())) >= 1)
+        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: pillVisible)
         .onReceive(timer) { _ in tick = Date() }
+        .onChange(of: scrubMinutesAbs) { _, newValue in
+            schedulePill(scrubbed: newValue >= 1)
+        }
         .sheet(item: $detailCity) { city in
             CityDetailSheet(city: city)
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
+        }
+    }
+
+    private var scrubMinutesAbs: Int {
+        Swift.abs(Int(store.scrubOffsetMinutes.rounded()))
+    }
+
+    /// While the user is scrubbing the pill is visible. When scrubbing
+    /// settles (no change for ~2s), the pill fades out. If the user resumes,
+    /// the pill comes right back.
+    private func schedulePill(scrubbed: Bool) {
+        pillFadeTask?.cancel()
+        if scrubbed {
+            pillVisible = true
+            pillFadeTask = Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                if !Task.isCancelled && scrubMinutesAbs >= 1 {
+                    pillVisible = false
+                }
+            }
+        } else {
+            // Scrubbed back to now — hide pill immediately.
+            pillVisible = false
         }
     }
 
