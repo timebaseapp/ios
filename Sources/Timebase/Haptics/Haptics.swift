@@ -56,4 +56,10 @@ enum Haptics {
         light.impactOccurred(intensity: 0.5)
         light.prepare()
     }
+
+    /// Refresh completed — soft confirmation that data is fresh.
+    static func refreshDone() {
+        light.impactOccurred(intensity: 0.7)
+        light.prepare()
+    }
 }

@@ -56,7 +56,9 @@ struct UpNextScreen: View {
                 .refreshable {
                     // Real refresh — re-hits EventKit so events added in any
                     // calendar source (work, personal, shared) show up.
+                    Haptics.buttonPressed()        // "got it, refreshing"
                     await store.refreshEvents()
+                    Haptics.refreshDone()          // soft tap on completion
                 }
             }
         }
