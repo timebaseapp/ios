@@ -20,6 +20,27 @@ struct SettingsScreen: View {
 
                 ScrollView {
                     VStack(spacing: 26) {
+                        section(title: "HOME") {
+                            if let home = store.homeCity {
+                                HStack {
+                                    Text(home.name)
+                                        .font(.system(size: 16))
+                                    Spacer()
+                                    Text(home.country)
+                                        .font(.system(size: 13))
+                                        .foregroundStyle(.secondary)
+                                }
+                                .padding(.horizontal, 16)
+                                .frame(height: 44)
+                            } else {
+                                Text("Home will be set from your location")
+                                    .font(.system(size: 14))
+                                    .foregroundStyle(.secondary)
+                                    .padding(.horizontal, 16)
+                                    .frame(height: 44)
+                            }
+                        }
+
                         section(title: "CITIES") {
                             Button {
                                 showAddSheet = true
@@ -27,7 +48,7 @@ struct SettingsScreen: View {
                                 HStack {
                                     Image(systemName: "plus")
                                         .font(.system(size: 14, weight: .semibold))
-                                    Text("Add city")
+                                    Text(store.isAtCityCap ? "Maximum reached (\(TimebaseStore.maxCities))" : "Add city")
                                         .font(.system(size: 16))
                                     Spacer()
                                 }
@@ -35,8 +56,10 @@ struct SettingsScreen: View {
                                 .frame(height: 44)
                             }
                             .buttonStyle(.plain)
+                            .disabled(store.isAtCityCap)
+                            .opacity(store.isAtCityCap ? 0.45 : 1)
 
-                            ForEach(store.orderedCities) { city in
+                            ForEach(nonHomeCities) { city in
                                 cityRow(city)
                             }
                         }
@@ -228,31 +251,22 @@ struct SettingsScreen: View {
         .frame(minHeight: 44)
     }
 
+    private var nonHomeCities: [City] {
+        store.orderedCities.filter { $0.id != store.homeCityId }
+    }
+
     @ViewBuilder
     private func cityRow(_ city: City) -> some View {
         HStack(spacing: 8) {
-            if city.id == store.homeCityId {
-                Text("🏠")
-                    .font(.system(size: 14))
-            }
             Text(city.name)
                 .font(.system(size: 16))
             Spacer()
-            if city.id != store.homeCityId {
-                Button {
-                    store.makeHome(cityId: city.id)
-                } label: {
-                    Text("Set home")
-                        .font(.system(size: 13))
-                        .foregroundStyle(.secondary)
-                }
-                Button(role: .destructive) {
-                    store.remove(cityId: city.id)
-                } label: {
-                    Image(systemName: "trash")
-                        .font(.system(size: 14))
-                        .foregroundStyle(.secondary)
-                }
+            Button(role: .destructive) {
+                store.remove(cityId: city.id)
+            } label: {
+                Image(systemName: "trash")
+                    .font(.system(size: 14))
+                    .foregroundStyle(.secondary)
             }
         }
         .padding(.horizontal, 16)

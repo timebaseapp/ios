@@ -39,6 +39,11 @@ struct OnboardingView: View {
                 store.seedDefaultsIfEmpty(localTimezone: tz)
             }
         }
+        .onChange(of: location.coordinate?.latitude) { _, _ in
+            if let coord = location.coordinate {
+                store.setHomeFromCoordinates(latitude: coord.latitude, longitude: coord.longitude)
+            }
+        }
     }
 
     private func advance() {
@@ -263,13 +268,16 @@ private struct HStackForHorizontal: ViewModifier {
 @MainActor
 final class LocationProbe: ObservableObject {
     @Published var tz: TimeZone?
+    @Published var coordinate: CLLocationCoordinate2D?
     private let manager = CLLocationManager()
     private let delegate = Delegate()
 
     init() {
         manager.delegate = delegate
-        delegate.onUpdate = { [weak self] tz in
-            self?.tz = tz
+        manager.desiredAccuracy = kCLLocationAccuracyKilometer
+        delegate.onUpdate = { [weak self] location in
+            self?.tz = TimeZone.current
+            self?.coordinate = location.coordinate
         }
     }
 
@@ -279,9 +287,9 @@ final class LocationProbe: ObservableObject {
     }
 
     private final class Delegate: NSObject, CLLocationManagerDelegate {
-        var onUpdate: ((TimeZone) -> Void)?
+        var onUpdate: ((CLLocation) -> Void)?
         func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-            onUpdate?(TimeZone.current)
+            if let loc = locations.first { onUpdate?(loc) }
         }
         func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {}
     }

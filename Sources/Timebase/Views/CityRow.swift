@@ -2,11 +2,37 @@ import SwiftUI
 
 struct CityRow: View {
     let city: City
+    var rowCount: Int = 5
+    var topContentInset: CGFloat = 0
+    var bottomContentInset: CGFloat = 0
     @Environment(TimebaseStore.self) private var store
     @Environment(\.colorScheme) private var colorScheme
 
     private var displayName: String {
-        city.id == store.homeCityId ? "🏠  \(city.name)" : city.name
+        // 🏠 as a suffix so all names start at the same left edge.
+        city.id == store.homeCityId ? "\(city.name)  🏠" : city.name
+    }
+
+    private var nameFontSize: CGFloat {
+        switch rowCount {
+        case ...5: return 22
+        case 6...7: return 20
+        default:   return 18
+        }
+    }
+    private var timeFontSize: CGFloat {
+        switch rowCount {
+        case ...5: return 28
+        case 6...7: return 25
+        default:   return 22
+        }
+    }
+    private var chipFontSize: CGFloat {
+        switch rowCount {
+        case ...5: return 13
+        case 6...7: return 12
+        default:   return 11
+        }
     }
 
     var body: some View {
@@ -16,12 +42,21 @@ struct CityRow: View {
         let gradient = TimeColor.backgroundGradient(forHour: hour, scheme: colorScheme, scrubMute: scrubMute)
         let fg = TimeColor.foreground(forHour: hour, scheme: colorScheme)
 
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Text(displayName)
-                .font(.system(size: 22, weight: .regular))
-                .kerning(-0.1)
-            Spacer(minLength: 8)
-            timeAndDay(in: city.timeZoneObject, date: displayDate)
+        VStack(spacing: 0) {
+            if topContentInset > 0 {
+                Color.clear.frame(height: topContentInset)
+            }
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                Text(displayName)
+                    .font(.system(size: nameFontSize, weight: .regular))
+                    .kerning(-0.1)
+                Spacer(minLength: 8)
+                timeAndDay(in: city.timeZoneObject, date: displayDate)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            if bottomContentInset > 0 {
+                Color.clear.frame(height: bottomContentInset)
+            }
         }
         .foregroundStyle(fg)
         .padding(.horizontal, 28)
@@ -50,16 +85,14 @@ struct CityRow: View {
 
     @ViewBuilder
     private func timeAndDay(in tz: TimeZone, date: Date) -> some View {
-        // .center so the padded chip sits visually centered against the
-        // heavy time numerals (firstTextBaseline made the chip look low).
         HStack(alignment: .center, spacing: 8) {
             Text(formattedTime(date: date, tz: tz))
-                .font(.system(size: 28, weight: .heavy))
+                .font(.system(size: timeFontSize, weight: .heavy))
                 .monospacedDigit()
                 .kerning(-0.5)
             if let dayOffset = dayOffsetChip(tz: tz, date: date) {
                 Text(dayOffset)
-                    .font(.system(size: 13, weight: .regular))
+                    .font(.system(size: chipFontSize, weight: .regular))
                     .tracking(0.6)
                     .textCase(.uppercase)
                     .padding(.horizontal, 6)

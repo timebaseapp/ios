@@ -112,11 +112,47 @@ final class TimebaseStore {
 
     // MARK: - Mutations
 
+    /// Cap on the world-clock list. Beyond this the rows get too short to
+    /// read and start fighting the dynamic island.
+    static let maxCities = 8
+
+    var isAtCityCap: Bool { cities.count >= Self.maxCities }
+
     func add(city: City) {
         guard !cities.contains(where: { $0.id == city.id }) else { return }
+        guard cities.count < Self.maxCities else { return }
         cities.append(city)
         if homeCityId == nil { homeCityId = city.id }
         save()
+    }
+
+    /// Picks the city closest to the given coordinates from the bundled
+    /// database, adds it if not present, and marks it as home. Called from
+    /// Onboarding when location permission is granted.
+    func setHomeFromCoordinates(latitude: Double, longitude: Double) {
+        let closest = cityDatabase.min { a, b in
+            haversineDistance(lat1: latitude, lon1: longitude, lat2: a.latitude, lon2: a.longitude) <
+            haversineDistance(lat1: latitude, lon1: longitude, lat2: b.latitude, lon2: b.longitude)
+        }
+        guard let closest else { return }
+        if !cities.contains(where: { $0.id == closest.id }) {
+            if cities.count >= Self.maxCities {
+                cities.removeFirst()
+            }
+            cities.insert(closest, at: 0)
+        }
+        homeCityId = closest.id
+        save()
+    }
+
+    private func haversineDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Double) -> Double {
+        let R = 6371.0
+        let toRad = { (d: Double) in d * .pi / 180 }
+        let dLat = toRad(lat2 - lat1)
+        let dLon = toRad(lon2 - lon1)
+        let a = sin(dLat/2) * sin(dLat/2) +
+                cos(toRad(lat1)) * cos(toRad(lat2)) * sin(dLon/2) * sin(dLon/2)
+        return R * 2 * asin(sqrt(a))
     }
 
     func remove(cityId: String) {

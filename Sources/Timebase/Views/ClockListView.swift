@@ -11,11 +11,26 @@ struct ClockListView: View {
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            UniversalScrubContainer(
-                content: VStack(spacing: 0) {
-                    ForEach(store.orderedCities) { city in
-                        CityRow(city: city)
+        // Outer GeometryReader reads the REAL safe area (the hosting
+        // controller inside UniversalScrubContainer zeroes its own safe area
+        // for full-bleed, so we capture insets here and pass them down).
+        GeometryReader { proxy in
+            let topSafe = proxy.safeAreaInsets.top
+            let botSafe = proxy.safeAreaInsets.bottom
+            let cities = store.orderedCities
+
+            ZStack(alignment: .bottom) {
+                UniversalScrubContainer(
+                    content: VStack(spacing: 0) {
+                        ForEach(Array(cities.enumerated()), id: \.element.id) { idx, city in
+                            let isFirst = idx == 0
+                            let isLast = idx == cities.count - 1
+                            CityRow(
+                                city: city,
+                                rowCount: cities.count,
+                                topContentInset: isFirst ? topSafe : 0,
+                                bottomContentInset: isLast ? botSafe : 0
+                            )
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                             .onTapGesture { detailCity = city }
                             .contextMenu {
@@ -25,17 +40,16 @@ struct ClockListView: View {
                                 }
                                 Button("Details") { detailCity = city }
                             }
+                        }
                     }
-                }
-                .ignoresSafeArea(),
-                onVerticalPan: { dy in
-                    // dy > 0 = drag down (rewind), dy < 0 = drag up (advance)
-                    store.scrubOffsetMinutes += Double(-dy) / scrubPixelsPerMinute
-                    ScrubHaptics.update(store: store)
-                },
-                onDoubleTap: { store.snapToNow() }
-            )
-            .ignoresSafeArea()
+                    .ignoresSafeArea(),
+                    onVerticalPan: { dy in
+                        store.scrubOffsetMinutes += Double(-dy) / scrubPixelsPerMinute
+                        ScrubHaptics.update(store: store)
+                    },
+                    onDoubleTap: { store.snapToNow() }
+                )
+                .ignoresSafeArea()
 
             // Scrub-delta pill — appears while scrubbed, auto-fades ~2s after
             // user stops scrubbing so it stops overlapping row content.
@@ -65,6 +79,7 @@ struct ClockListView: View {
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
         }
+        }   // end GeometryReader
     }
 
     private var scrubMinutesAbs: Int {
