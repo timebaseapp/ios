@@ -7,7 +7,6 @@ struct WorldClockWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "TimebaseWorldClock", provider: WorldClockProvider()) { entry in
             WorldClockEntryView(entry: entry)
-                .containerBackground(.clear, for: .widget)
         }
         .configurationDisplayName("World Clock")
         .description("Your Timebase cities at a glance.")
@@ -87,21 +86,26 @@ private struct SmallView: View {
         let grad = WidgetTimeColor.gradient(forHour: h)
         let fg = WidgetTimeColor.foreground(forHour: h)
 
-        ZStack {
-            LinearGradient(colors: grad, startPoint: .top, endPoint: .bottom)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(city?.name ?? "—")
-                    .font(.system(size: 13))
-                Spacer()
-                Text(timeString(date: entry.date, tz: city?.timeZone ?? .current))
-                    .font(.system(size: 28, weight: .heavy))
-                    .monospacedDigit()
+        // Empty body + the gradient + text both go in containerBackground so
+        // the color bleeds to the rounded corners.
+        Color.clear
+            .containerBackground(for: .widget) {
+                ZStack {
+                    LinearGradient(colors: grad, startPoint: .top, endPoint: .bottom)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(city?.name ?? "—")
+                            .font(.system(size: 13))
+                        Spacer()
+                        Text(timeString(date: entry.date, tz: city?.timeZone ?? .current))
+                            .font(.system(size: 28, weight: .heavy))
+                            .monospacedDigit()
+                    }
+                    .padding(14)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                    .foregroundStyle(fg)
+                }
             }
-            .padding(14)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-            .foregroundStyle(fg)
-        }
-        .widgetURL(URL(string: "timebase://city/\(city?.id ?? "")"))
+            .widgetURL(URL(string: "timebase://city/\(city?.id ?? "")"))
     }
 }
 
@@ -110,12 +114,15 @@ private struct MediumView: View {
 
     var body: some View {
         let cities = orderedCities(persisted: entry.persisted).prefix(3)
-        VStack(spacing: 0) {
-            ForEach(Array(cities), id: \.id) { city in
-                row(for: city)
+        Color.clear
+            .containerBackground(for: .widget) {
+                VStack(spacing: 0) {
+                    ForEach(Array(cities), id: \.id) { city in
+                        row(for: city)
+                    }
+                }
             }
-        }
-        .widgetURL(URL(string: "timebase://"))
+            .widgetURL(URL(string: "timebase://"))
     }
 
     private func row(for city: WidgetCity) -> some View {
@@ -144,12 +151,15 @@ private struct LargeView: View {
 
     var body: some View {
         let cities = orderedCities(persisted: entry.persisted).prefix(5)
-        VStack(spacing: 0) {
-            ForEach(Array(cities), id: \.id) { city in
-                row(for: city)
+        Color.clear
+            .containerBackground(for: .widget) {
+                VStack(spacing: 0) {
+                    ForEach(Array(cities), id: \.id) { city in
+                        row(for: city)
+                    }
+                }
             }
-        }
-        .widgetURL(URL(string: "timebase://"))
+            .widgetURL(URL(string: "timebase://"))
     }
 
     private func row(for city: WidgetCity) -> some View {
@@ -188,6 +198,7 @@ private struct AccessoryCircularView: View {
                 .monospacedDigit()
         }
         .gaugeStyle(.accessoryCircularCapacity)
+        .containerBackground(for: .widget) { Color.clear }
         .widgetURL(URL(string: "timebase://"))
     }
 
@@ -214,6 +225,7 @@ private struct AccessoryRectView: View {
                 }
             }
         }
+        .containerBackground(for: .widget) { Color.clear }
         .widgetURL(URL(string: "timebase://"))
     }
 }
@@ -227,6 +239,7 @@ private struct AccessoryInlineView: View {
             "\(short(city.name)) \(shortTime(date: entry.date, tz: city.timeZone))"
         }
         Text(parts.joined(separator: " · "))
+            .containerBackground(for: .widget) { Color.clear }
     }
 
     private func short(_ s: String) -> String {
