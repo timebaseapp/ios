@@ -32,6 +32,17 @@ struct ClockListView: View {
                                 bottomContentInset: isLast ? botSafe : 0
                             )
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            // Double-tap snaps back to now — only when
+                            // scrubbed, so taps in the resting state still
+                            // open the city detail without the double-tap
+                            // recognition delay.
+                            .onTapGesture(count: 2) {
+                                guard store.scrubOffsetMinutes != 0 else {
+                                    detailCity = city
+                                    return
+                                }
+                                store.snapToNow()
+                            }
                             .onTapGesture { detailCity = city }
                             .contextMenu {
                                 if city.id != store.homeCityId {
@@ -66,10 +77,13 @@ struct ClockListView: View {
                 }
                 .buttonStyle(SkeuomorphicPillButtonStyle())
                 .padding(.bottom, 18)
-                .transition(.scale(scale: 0.85).combined(with: .opacity))
+                .transition(.asymmetric(
+                    insertion: .scale(scale: 0.85).combined(with: .opacity)
+                        .animation(.spring(response: 0.35, dampingFraction: 0.85)),
+                    removal: .opacity.animation(.easeOut(duration: 0.9))
+                ))
             }
         }
-        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: pillVisible)
         .onReceive(timer) { _ in tick = Date() }
         .onChange(of: scrubMinutesAbs) { _, newValue in
             schedulePill(scrubbed: newValue >= 1)
