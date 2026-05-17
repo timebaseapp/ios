@@ -28,6 +28,7 @@ struct TimebaseApp: App {
                         autoRotateIfNeeded()
                         Greeting.updateDynamicShortcut()
                         motion.start()
+                        consumePendingIntent()
                     case .background:
                         motion.stop()
                     default:
@@ -37,6 +38,18 @@ struct TimebaseApp: App {
                 .onOpenURL { url in
                     DeepLinkRouter.handle(url: url, store: store)
                 }
+        }
+    }
+
+    /// PlanMeetingIntent stashes flags in the App Group when run; pick them
+    /// up here when the host app returns to the foreground.
+    @MainActor
+    private func consumePendingIntent() {
+        let defaults = TimebaseStore.sharedDefaults
+        if defaults.bool(forKey: "timebase.pendingShowScheduler") {
+            defaults.removeObject(forKey: "timebase.pendingShowScheduler")
+            store.goTo(tab: .upNextAbout)
+            store.pendingShowScheduler = true
         }
     }
 

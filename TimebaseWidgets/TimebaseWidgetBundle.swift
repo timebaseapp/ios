@@ -8,5 +8,8 @@ struct TimebaseWidgetBundle: WidgetBundle {
         if #available(iOSApplicationExtension 16.2, *) {
             EventCountdownLiveActivity()
         }
+        if #available(iOSApplicationExtension 18.0, *) {
+            TimebaseControlWidget()
+        }
     }
 }
