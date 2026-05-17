@@ -125,7 +125,7 @@ struct AboutFooter: View {
                 .kerning(-0.2)
                 .foregroundStyle(.primary.opacity(0.85))
 
-            Text("A quieter way to think across timezones.")
+            Text("A quieter way to think across timezones")
                 .font(.custom("DepartureMono-Regular", size: 10))
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
