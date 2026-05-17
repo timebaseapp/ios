@@ -67,18 +67,18 @@ struct SettingsScreen: View {
                         section(title: "PREFERENCES") {
                             preferenceRow("24-hour time") {
                                 inlineMenu(
-                                    label: hourLabel(bindable.wrappedValue.settings.hourPreference),
+                                    label: hourLabel(store.settings.hourPreference),
                                     options: HourPreference.allCases.map { ($0, hourLabel($0)) },
-                                    isSelected: { $0 == bindable.wrappedValue.settings.hourPreference },
-                                    onPick: { bindable.wrappedValue.settings.hourPreference = $0 }
+                                    isSelected: { $0 == store.settings.hourPreference },
+                                    onPick: { store.settings.hourPreference = $0 }
                                 )
                             }
                             preferenceRow("Theme") {
                                 inlineMenu(
-                                    label: appearanceLabel(bindable.wrappedValue.settings.appearance),
+                                    label: appearanceLabel(store.settings.appearance),
                                     options: Appearance.allCases.map { ($0, appearanceLabel($0)) },
-                                    isSelected: { $0 == bindable.wrappedValue.settings.appearance },
-                                    onPick: { bindable.wrappedValue.settings.appearance = $0 }
+                                    isSelected: { $0 == store.settings.appearance },
+                                    onPick: { store.settings.appearance = $0 }
                                 )
                             }
                             preferenceRow("Calendar") {
