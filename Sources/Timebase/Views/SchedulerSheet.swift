@@ -174,9 +174,7 @@ struct SchedulerSheet: View {
     private func participantRow(_ city: City) -> some View {
         HStack(spacing: 8) {
             if city.id == store.homeCityId {
-                Circle()
-                    .fill(Color.primary.opacity(0.55))
-                    .frame(width: 5, height: 5)
+                Text("🏠").font(.system(size: 14))
             }
             Text(city.name).font(.system(size: 15))
             Spacer()
