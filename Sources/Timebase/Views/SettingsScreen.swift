@@ -91,11 +91,6 @@ struct SettingsScreen: View {
                             .frame(height: 44)
                         }
 
-                        section(title: "COMING SOON") {
-                            comingSoonRow("Alternate app icons")
-                            comingSoonRow("Pro")
-                        }
-
                         section(title: "DANGER") {
                             Button(role: .destructive) {
                                 showResetConfirm = true
@@ -189,17 +184,4 @@ struct SettingsScreen: View {
         .frame(height: 44)
     }
 
-    @ViewBuilder
-    private func comingSoonRow(_ label: String) -> some View {
-        HStack {
-            Text(label)
-                .font(.system(size: 16))
-                .foregroundStyle(.secondary)
-            Spacer()
-            Text("—")
-                .foregroundStyle(.tertiary)
-        }
-        .padding(.horizontal, 16)
-        .frame(height: 44)
-    }
 }
