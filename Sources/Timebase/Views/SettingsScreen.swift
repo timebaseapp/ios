@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsScreen: View {
     @Environment(TimebaseStore.self) private var store
     @State private var showAddSheet = false
+    @State private var showResetConfirm = false
 
     var body: some View {
         @Bindable var bindable = store
@@ -96,6 +97,21 @@ struct SettingsScreen: View {
                             comingSoonRow("Alternate app icons")
                             comingSoonRow("Pro")
                         }
+
+                        section(title: "DANGER") {
+                            Button(role: .destructive) {
+                                showResetConfirm = true
+                            } label: {
+                                HStack {
+                                    Text("Reset all data")
+                                        .font(.custom("DepartureMono-Regular", size: 13))
+                                    Spacer()
+                                }
+                                .padding(.horizontal, 16)
+                                .frame(height: 44)
+                            }
+                            .foregroundStyle(.red)
+                        }
                         .padding(.bottom, 32)
                     }
                     .padding(.horizontal, 20)
@@ -104,6 +120,18 @@ struct SettingsScreen: View {
         }
         .sheet(isPresented: $showAddSheet) {
             AddCitySheet()
+        }
+        .confirmationDialog(
+            "Reset all data?",
+            isPresented: $showResetConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Reset everything", role: .destructive) {
+                store.resetAll()
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("Clears your cities, settings, and onboarding state on this device and in iCloud. You'll see the onboarding again on next launch.")
         }
     }
 

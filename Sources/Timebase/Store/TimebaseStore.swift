@@ -163,6 +163,20 @@ final class TimebaseStore {
         save()
     }
 
+    /// Wipes everything: cities, home, settings, onboarding flag, scrub
+    /// state. Clears both UserDefaults and iCloud KVS so a relaunch lands
+    /// fresh on the onboarding flow.
+    func resetAll() {
+        cities = []
+        homeCityId = nil
+        settings = UserSettings()
+        hasCompletedOnboarding = false
+        scrubOffsetMinutes = 0
+        upcomingEvents = []
+        UserDefaults.standard.removeObject(forKey: "timebase.v1")
+        cloudStore.clear()
+    }
+
     // MARK: - Events / Calendar
 
     func requestCalendarAccess() async {

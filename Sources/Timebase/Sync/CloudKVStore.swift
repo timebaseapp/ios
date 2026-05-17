@@ -17,4 +17,9 @@ final class CloudKVStore {
     func load() -> Data? {
         store.data(forKey: key)
     }
+
+    func clear() {
+        store.removeObject(forKey: key)
+        store.synchronize()
+    }
 }
