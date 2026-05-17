@@ -4,6 +4,7 @@ import SwiftUI
 struct TimebaseApp: App {
     @State private var store = TimebaseStore()
     @StateObject private var weather = WeatherStore()
+    @Environment(\.scenePhase) private var scenePhaseEnvironment
 
     var body: some Scene {
         WindowGroup {
@@ -13,8 +14,19 @@ struct TimebaseApp: App {
                 .preferredColorScheme(store.settings.appearance.preferred)
                 .task {
                     await store.bootstrap()
+                    autoRotateIfNeeded()
+                }
+                .onChange(of: scenePhaseEnvironment) { _, phase in
+                    if phase == .active { autoRotateIfNeeded() }
                 }
         }
+    }
+
+    @MainActor
+    private func autoRotateIfNeeded() {
+        guard store.settings.autoRotateIcon else { return }
+        let target = store.currentBucketIconName()
+        AppIconManager.setIcon(target)
     }
 }
 

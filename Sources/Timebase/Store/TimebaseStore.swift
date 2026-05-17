@@ -36,6 +36,7 @@ enum HourPreference: String, Codable, CaseIterable {
 struct UserSettings: Codable {
     var hourPreference: HourPreference = .system
     var appearance: Appearance = .system
+    var autoRotateIcon: Bool = false
 }
 
 @Observable
@@ -161,6 +162,20 @@ final class TimebaseStore {
     func completeOnboarding() {
         hasCompletedOnboarding = true
         save()
+    }
+
+    /// Returns the icon name corresponding to the time-of-day bucket at the
+    /// user's home timezone (or device-current if no home set).
+    func currentBucketIconName(at date: Date = .now) -> String {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = homeCity?.timeZoneObject ?? .current
+        let h = cal.component(.hour, from: date)
+        switch h {
+        case 5..<11:  return "AppIcon-Morning"
+        case 11..<15: return "AppIcon-Midday"
+        case 15..<19: return "AppIcon-GoldenHour"
+        default:      return "AppIcon-Dusk"
+        }
     }
 
     /// Wipes everything: cities, home, settings, onboarding flag, scrub

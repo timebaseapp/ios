@@ -47,6 +47,8 @@ targets:
         TARGETED_DEVICE_FAMILY: "1"
         CODE_SIGN_ENTITLEMENTS: Sources/Timebase/Timebase.entitlements
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: "AppIcon-Morning AppIcon-Midday AppIcon-GoldenHour AppIcon-Dusk"
+        ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS: "YES"
         DEVELOPMENT_TEAM: VRNNS4H6XH
 
   TimebaseTests:

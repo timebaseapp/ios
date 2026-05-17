@@ -91,6 +91,11 @@ struct SettingsScreen: View {
                             .frame(height: 44)
                         }
 
+                        section(title: "APP ICON") {
+                            iconRow
+                            autoRotateRow(bindable: $bindable)
+                        }
+
                         section(title: "DANGER") {
                             Button(role: .destructive) {
                                 showResetConfirm = true
@@ -151,6 +156,77 @@ struct SettingsScreen: View {
                     )
             )
         }
+    }
+
+    @State private var currentIcon = AppIconManager.currentName
+
+    private var iconRow: some View {
+        HStack(spacing: 10) {
+            ForEach(Array(zip(AppIconManager.names, AppIconManager.labels)), id: \.0) { (name, label) in
+                Button {
+                    AppIconManager.setIcon(name)
+                    // Optimistically reflect the selection — iOS only updates
+                    // alternateIconName after the user confirms the alert, so
+                    // tracking it locally keeps the UI feeling responsive.
+                    currentIcon = name
+                } label: {
+                    VStack(spacing: 6) {
+                        ZStack {
+                            if let img = UIImage(named: name) {
+                                Image(uiImage: img)
+                                    .resizable()
+                                    .interpolation(.high)
+                                    .frame(width: 56, height: 56)
+                                    .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+                            } else {
+                                RoundedRectangle(cornerRadius: 13, style: .continuous)
+                                    .fill(Color.gray.opacity(0.2))
+                                    .frame(width: 56, height: 56)
+                            }
+                            RoundedRectangle(cornerRadius: 13, style: .continuous)
+                                .stroke(.black.opacity(0.10), lineWidth: 0.5)
+                                .frame(width: 56, height: 56)
+                            if currentIcon == name {
+                                RoundedRectangle(cornerRadius: 15, style: .continuous)
+                                    .stroke(.primary, lineWidth: 2)
+                                    .frame(width: 62, height: 62)
+                            }
+                        }
+                        .frame(width: 62, height: 62)
+
+                        Text(label)
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                    }
+                }
+                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 14)
+    }
+
+    private func autoRotateRow(bindable: Bindable<TimebaseStore>) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Auto-rotate through the day")
+                    .font(.system(size: 16))
+                if bindable.wrappedValue.settings.autoRotateIcon {
+                    Text("Shows an iOS alert on each switch")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Spacer()
+            Toggle("", isOn: bindable.settings.autoRotateIcon)
+                .labelsHidden()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .frame(minHeight: 44)
     }
 
     @ViewBuilder
