@@ -3,80 +3,173 @@ import SwiftUI
 import ActivityKit
 
 /// Live Activity — lock-screen card + Dynamic Island for the soonest
-/// upcoming calendar event. Counts down natively via
-/// `Text(timerInterval:)` so updates don't require frequent
-/// `Activity.update`.
+/// upcoming calendar event. Branded with the Timebase time-of-day gradient
+/// at the event's start hour. Countdown ticks natively via
+/// `Text(timerInterval:)`.
 @available(iOSApplicationExtension 16.2, *)
 struct EventCountdownLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: EventCountdownAttributes.self) { context in
             LockScreenCard(context: context)
-                .activityBackgroundTint(Color.black.opacity(0.85))
-                .activitySystemActionForegroundColor(.white)
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    Text(context.state.title)
-                        .font(.system(size: 13, weight: .medium))
-                        .lineLimit(1)
+                    HStack(spacing: 8) {
+                        GradientDot(date: context.state.start,
+                                    tzId: context.attributes.eventTzIdentifier)
+                            .frame(width: 22, height: 22)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text("UP NEXT")
+                                .font(.system(size: 9, design: .monospaced))
+                                .tracking(1.2)
+                                .foregroundStyle(.secondary)
+                            Text(context.state.title)
+                                .font(.system(size: 14, weight: .medium))
+                                .lineLimit(1)
+                        }
+                    }
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     CountdownText(target: context.state.start)
                         .monospacedDigit()
-                        .font(.system(size: 14, weight: .heavy))
+                        .font(.system(size: 20, weight: .heavy))
+                        .foregroundStyle(.white)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    HStack {
-                        Text(formattedTime(context.state.start,
-                                           tzId: context.attributes.homeTzIdentifier))
-                            .foregroundStyle(.secondary)
+                    HStack(spacing: 12) {
+                        timeLabel("HOME",
+                                  date: context.state.start,
+                                  tzId: context.attributes.homeTzIdentifier)
                         Spacer()
-                        Text(formattedTime(context.state.start,
-                                           tzId: context.attributes.eventTzIdentifier))
-                            .foregroundStyle(.secondary)
+                        timeLabel("EVENT",
+                                  date: context.state.start,
+                                  tzId: context.attributes.eventTzIdentifier)
                     }
-                    .font(.system(size: 11))
+                    .padding(.horizontal, 4)
+                    .padding(.top, 2)
                 }
             } compactLeading: {
-                Image(systemName: "clock")
+                GradientDot(date: context.state.start,
+                            tzId: context.attributes.eventTzIdentifier)
+                    .frame(width: 18, height: 18)
             } compactTrailing: {
                 CountdownText(target: context.state.start)
                     .monospacedDigit()
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white)
             } minimal: {
-                Image(systemName: "clock")
+                GradientDot(date: context.state.start,
+                            tzId: context.attributes.eventTzIdentifier)
             }
         }
     }
+
+    @ViewBuilder
+    private func timeLabel(_ caption: String, date: Date, tzId: String) -> some View {
+        let tz = TimeZone(identifier: tzId) ?? .current
+        VStack(alignment: .leading, spacing: 1) {
+            Text(caption)
+                .font(.system(size: 8, design: .monospaced))
+                .tracking(1.2)
+                .foregroundStyle(.secondary)
+            Text(formatted(date: date, tz: tz))
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(.primary)
+        }
+    }
+
+    private func formatted(date: Date, tz: TimeZone) -> String {
+        var fmt = Date.FormatStyle.dateTime
+            .hour(.defaultDigits(amPM: .abbreviated))
+            .minute(.twoDigits)
+        fmt.timeZone = tz
+        let abbr = tz.abbreviation(for: date) ?? ""
+        let s = fmt.format(date)
+        return abbr.isEmpty ? s : "\(s) \(abbr)"
+    }
 }
 
+/// Lock-screen card — full-bleed time-of-day gradient with the event title
+/// + ticking countdown + home/event time strip.
 @available(iOSApplicationExtension 16.2, *)
 private struct LockScreenCard: View {
     let context: ActivityViewContext<EventCountdownAttributes>
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("UP NEXT")
-                .font(.system(size: 10, design: .monospaced))
-                .tracking(1.5)
-                .foregroundStyle(.secondary)
-            Text(context.state.title)
-                .font(.system(size: 17))
-                .foregroundStyle(.primary)
-            CountdownText(target: context.state.start)
-                .monospacedDigit()
-                .font(.system(size: 32, weight: .heavy))
-                .foregroundStyle(.primary)
+        let hour = fractionalHour(date: context.state.start,
+                                  tzId: context.attributes.eventTzIdentifier)
+        let grad = WidgetTimeColor.gradient(forHour: hour)
+        let fg = WidgetTimeColor.foreground(forHour: hour)
+        let secondary = fg.opacity(0.7)
+
+        ZStack {
+            LinearGradient(colors: grad, startPoint: .topLeading, endPoint: .bottomTrailing)
+
+            HStack(alignment: .center, spacing: 14) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("UP NEXT")
+                        .font(.system(size: 10, design: .monospaced))
+                        .tracking(1.6)
+                        .foregroundStyle(secondary)
+                    Text(context.state.title)
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundStyle(fg)
+                        .lineLimit(2)
+                    HStack(spacing: 10) {
+                        Text(formatted(date: context.state.start,
+                                       tzId: context.attributes.homeTzIdentifier))
+                        Text("·")
+                        Text(formatted(date: context.state.start,
+                                       tzId: context.attributes.eventTzIdentifier))
+                    }
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundStyle(secondary)
+                }
+                Spacer(minLength: 8)
+                CountdownText(target: context.state.start)
+                    .monospacedDigit()
+                    .font(.system(size: 34, weight: .heavy))
+                    .foregroundStyle(fg)
+                    .minimumScaleFactor(0.6)
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 14)
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .activityBackgroundTint(Color.clear)
+        .activitySystemActionForegroundColor(fg)
+    }
+
+    private func formatted(date: Date, tzId: String) -> String {
+        let tz = TimeZone(identifier: tzId) ?? .current
+        var fmt = Date.FormatStyle.dateTime
+            .hour(.defaultDigits(amPM: .abbreviated))
+            .minute(.twoDigits)
+        fmt.timeZone = tz
+        let abbr = tz.abbreviation(for: date) ?? ""
+        let s = fmt.format(date)
+        return abbr.isEmpty ? s : "\(s) \(abbr)"
     }
 }
 
-/// Wraps `Text(timerInterval:)` with a fallback when the target is past.
+/// Tiny circle filled with the Timebase time-of-day gradient at a moment in
+/// time — used as our brand mark in the Dynamic Island.
+private struct GradientDot: View {
+    let date: Date
+    let tzId: String
+
+    var body: some View {
+        let hour = fractionalHour(date: date, tzId: tzId)
+        let grad = WidgetTimeColor.gradient(forHour: hour)
+        Circle()
+            .fill(LinearGradient(colors: grad,
+                                 startPoint: .topLeading,
+                                 endPoint: .bottomTrailing))
+    }
+}
+
 private struct CountdownText: View {
     let target: Date
-
     var body: some View {
         if target > Date() {
             Text(timerInterval: Date() ... target, countsDown: true)
@@ -86,13 +179,10 @@ private struct CountdownText: View {
     }
 }
 
-private func formattedTime(_ date: Date, tzId: String) -> String {
+private func fractionalHour(date: Date, tzId: String) -> Double {
     let tz = TimeZone(identifier: tzId) ?? .current
-    var fmt = Date.FormatStyle.dateTime
-        .hour(.defaultDigits(amPM: .abbreviated))
-        .minute(.twoDigits)
-    fmt.timeZone = tz
-    let abbr = tz.abbreviation(for: date) ?? ""
-    let time = fmt.format(date)
-    return abbr.isEmpty ? time : "\(time) \(abbr)"
+    var cal = Calendar(identifier: .gregorian)
+    cal.timeZone = tz
+    let comps = cal.dateComponents([.hour, .minute], from: date)
+    return Double(comps.hour ?? 0) + Double(comps.minute ?? 0) / 60.0
 }
