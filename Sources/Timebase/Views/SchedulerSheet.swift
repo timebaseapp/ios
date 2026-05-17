@@ -1,24 +1,26 @@
 import SwiftUI
 import EventKit
 
-/// "Plan a meeting" modal — pick participants (cities), scrub a time, see the
-/// vibe for each city, choose duration, hand off to Apple's EKEventEditView.
+/// "Plan a meeting" modal — pick participants (cities), choose date+time
+/// natively, see how it lands for each participant, hand off to Apple's
+/// EKEventEditView for the rest (notes, invitees, recurrence, location).
 struct SchedulerSheet: View {
     @Environment(TimebaseStore.self) private var store
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dismiss) private var dismiss
 
     @State private var title: String = ""
-    @State private var date: Date = Calendar.current.startOfDay(for: .now)
-    @State private var scrubMinutesOfDay: Int = 9 * 60   // default 9:00 home time
+    /// The meeting time as an absolute Date — interpreted in the user's home
+    /// timezone for display. SwiftUI re-renders dependents instantly when this
+    /// changes, so the "For everyone" section never lags.
+    @State private var meetingTime: Date = defaultMeetingTime()
     @State private var participantIds: [String] = []
     @State private var durationMinutes: Int = 30
     @State private var showPicker = false
     @State private var draftEvent: EKEvent?
-    @State private var initialScrub: Int = 0
+    @FocusState private var titleFocused: Bool
 
     private let calendarService = EventKitService()
-
     private let durations = [15, 30, 45, 60, 90, 120]
 
     var body: some View {
@@ -61,8 +63,6 @@ struct SchedulerSheet: View {
     // MARK: - Header
 
     private var header: some View {
-        // No traffic lights — sheet has native drag-to-dismiss + drag indicator.
-        // Just the title centered with a Continue confirmation button on the right.
         ZStack {
             Text("Plan a meeting")
                 .font(.custom("CrimsonText-SemiBold", size: 22))
@@ -114,11 +114,17 @@ struct SchedulerSheet: View {
             .padding(.horizontal, 20)
             .padding(.top, 4)
         }
+        .scrollDismissesKeyboard(.interactively)
+        // Tap outside any field to dismiss the keyboard
+        .onTapGesture { titleFocused = false }
     }
 
     private var titleField: some View {
         TextField("Meeting title", text: $title)
             .font(.system(size: 17))
+            .focused($titleFocused)
+            .submitLabel(.done)
+            .onSubmit { titleFocused = false }
             .padding(.horizontal, 14)
             .frame(height: 48)
             .background(
@@ -139,6 +145,7 @@ struct SchedulerSheet: View {
                     participantRow(city)
                 }
                 Button {
+                    titleFocused = false
                     showPicker = true
                 } label: {
                     HStack {
@@ -184,17 +191,27 @@ struct SchedulerSheet: View {
         .frame(height: 44)
     }
 
+    /// Native iOS date + time picker — compact style. Tap either to bring up
+    /// the wheel/calendar in a popover. Two rows: date row, time row.
     private var whenSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             sectionHeader("WHEN")
             VStack(spacing: 0) {
-                DatePicker("Date", selection: $date, displayedComponents: .date)
+                DatePicker("Date",
+                           selection: $meetingTime,
+                           displayedComponents: .date)
                     .font(.system(size: 15))
                     .padding(.horizontal, 14)
                     .frame(height: 44)
                 Divider().padding(.horizontal, 14)
-                timeScrubber
+                DatePicker("Time",
+                           selection: $meetingTime,
+                           displayedComponents: .hourAndMinute)
+                    .font(.system(size: 15))
+                    .padding(.horizontal, 14)
+                    .frame(height: 44)
             }
+            .environment(\.timeZone, homeTimeZone)
             .background(
                 RoundedRectangle(cornerRadius: 12)
                     .fill(Color.primary.opacity(0.05))
@@ -204,75 +221,6 @@ struct SchedulerSheet: View {
                     )
             )
         }
-    }
-
-    /// Scrubbable time control. Big tappable area with up/down chevrons on
-    /// the side as discoverability hints. Vertical drag scrubs in 15-min
-    /// snaps. Single-tap on either chevron nudges 15 min.
-    private var timeScrubber: some View {
-        HStack(spacing: 14) {
-            Text("Time")
-                .font(.system(size: 15))
-            Spacer()
-
-            // Down chevron — earlier
-            Button {
-                bumpTime(by: -15)
-            } label: {
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 30, height: 36)
-            }
-            .buttonStyle(.plain)
-
-            Text(timeString)
-                .font(.system(size: 20, weight: .medium))
-                .monospacedDigit()
-                .frame(minWidth: 100)
-                .padding(.horizontal, 4)
-                .contentShape(Rectangle())
-                .gesture(scrubGesture)
-
-            // Up chevron — later
-            Button {
-                bumpTime(by: 15)
-            } label: {
-                Image(systemName: "chevron.up")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 30, height: 36)
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.horizontal, 14)
-        .frame(height: 56)
-    }
-
-    private var scrubGesture: some Gesture {
-        DragGesture(minimumDistance: 4)
-            .onChanged { value in
-                if initialScrub == 0 { initialScrub = scrubMinutesOfDay }
-                let deltaMin = Int(-value.translation.height / 4)
-                let raw = initialScrub + deltaMin
-                let snapped = ((raw + 7) / 15) * 15
-                scrubMinutesOfDay = max(0, min(24 * 60 - 1, snapped))
-            }
-            .onEnded { _ in initialScrub = 0 }
-    }
-
-    private func bumpTime(by minutes: Int) {
-        Haptics.buttonPressed()
-        let raw = scrubMinutesOfDay + minutes
-        scrubMinutesOfDay = max(0, min(24 * 60 - 1, ((raw + 7) / 15) * 15))
-    }
-
-    private var timeString: String {
-        let h = scrubMinutesOfDay / 60
-        let m = scrubMinutesOfDay % 60
-        let h12 = ((h + 11) % 12) + 1
-        let suffix = h < 12 ? "AM" : "PM"
-        return String(format: "%d:%02d %@", h12, m, suffix)
     }
 
     private var vibeSection: some View {
@@ -306,14 +254,11 @@ struct SchedulerSheet: View {
     }
 
     private func vibeRow(_ city: City) -> some View {
-        let (cityHour, label, color, glyph) = vibe(for: city)
-        let h12 = ((cityHour + 11) % 12) + 1
-        let suffix = cityHour < 12 ? "AM" : "PM"
-
+        let (label, color, glyph) = vibe(for: city)
         return HStack(spacing: 10) {
             Text(city.name).font(.system(size: 15))
             Spacer()
-            Text(String(format: "%d:00 %@", h12, suffix))
+            Text(localTimeString(for: city))
                 .font(.system(size: 14))
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
@@ -384,7 +329,11 @@ struct SchedulerSheet: View {
             .foregroundStyle(.secondary)
     }
 
-    // MARK: - Vibe + helpers
+    // MARK: - Helpers
+
+    private var homeTimeZone: TimeZone {
+        store.homeCity?.timeZoneObject ?? .current
+    }
 
     private var participants: [City] {
         participantIds.compactMap { id in
@@ -393,26 +342,30 @@ struct SchedulerSheet: View {
         }
     }
 
-    /// City hour for the chosen meeting time (in home tz, projected to city tz).
+    /// Local hour at the city's timezone for the absolute meeting time.
     private func hour(for city: City) -> Int {
-        guard let home = store.homeCity else { return 12 }
-        let homeOffset = home.timeZoneObject.secondsFromGMT()
-        let cityOffset = city.timeZoneObject.secondsFromGMT()
-        let diffMinutes = (cityOffset - homeOffset) / 60
-        let total = scrubMinutesOfDay + diffMinutes
-        let h = ((total / 60) % 24 + 24) % 24
-        return h
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = city.timeZoneObject
+        return cal.component(.hour, from: meetingTime)
     }
 
-    private func vibe(for city: City) -> (hour: Int, label: String, color: Color, glyph: String) {
+    private func localTimeString(for city: City) -> String {
+        var fmt = Date.FormatStyle.dateTime
+            .hour(.defaultDigits(amPM: .abbreviated))
+            .minute(.twoDigits)
+        fmt.timeZone = city.timeZoneObject
+        return fmt.format(meetingTime)
+    }
+
+    private func vibe(for city: City) -> (label: String, color: Color, glyph: String) {
         let h = hour(for: city)
         switch h {
         case 9..<18:
-            return (h, "working", .green, "☀")
+            return ("working", .green, "☀")
         case 7..<9, 18..<21:
-            return (h, "early/late", .orange, "⚠")
+            return ("early/late", .orange, "⚠")
         default:
-            return (h, "asleep", .gray, "🌙")
+            return ("asleep", .gray, "🌙")
         }
     }
 
@@ -425,16 +378,22 @@ struct SchedulerSheet: View {
     }
 
     private func openInCalendar() {
-        var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = store.homeCity?.timeZoneObject ?? .current
-        var comps = cal.dateComponents([.year, .month, .day], from: date)
-        comps.hour = scrubMinutesOfDay / 60
-        comps.minute = scrubMinutesOfDay % 60
-        guard let start = cal.date(from: comps) else { return }
-        let end = start.addingTimeInterval(TimeInterval(durationMinutes * 60))
-
-        let event = calendarService.makeDraftEvent(title: title, start: start, end: end)
+        titleFocused = false
+        let end = meetingTime.addingTimeInterval(TimeInterval(durationMinutes * 60))
+        let event = calendarService.makeDraftEvent(title: title, start: meetingTime, end: end)
         draftEvent = event
+    }
+
+    /// Default meeting time: today at 09:00 in the current timezone (home tz
+    /// might not be set yet at View init).
+    private static func defaultMeetingTime() -> Date {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = .current
+        let now = Date()
+        var comps = cal.dateComponents([.year, .month, .day], from: now)
+        comps.hour = 9
+        comps.minute = 0
+        return cal.date(from: comps) ?? now
     }
 }
 
