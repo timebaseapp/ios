@@ -6,6 +6,7 @@ struct CityRow: View {
     var topContentInset: CGFloat = 0
     var bottomContentInset: CGFloat = 0
     @Environment(TimebaseStore.self) private var store
+    @Environment(MotionStore.self) private var motion
     @EnvironmentObject private var weather: WeatherStore
     @Environment(\.colorScheme) private var colorScheme
 
@@ -64,7 +65,15 @@ struct CityRow: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(
             ZStack {
-                LinearGradient(colors: gradient, startPoint: .top, endPoint: .bottom)
+                // Parallax: gradient endpoints shift slightly with device
+                // tilt so the colors feel fluid as you move the phone.
+                LinearGradient(
+                    colors: gradient,
+                    startPoint: UnitPoint(x: 0.5 + motion.roll * 0.18,
+                                          y: 0.0 + motion.pitch * 0.10),
+                    endPoint:   UnitPoint(x: 0.5 - motion.roll * 0.18,
+                                          y: 1.0 - motion.pitch * 0.10)
+                )
                 if let w = weather.snapshot(for: city) {
                     WeatherEffectOverlay(condition: w.condition, tint: fg)
                 }

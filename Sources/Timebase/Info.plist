@@ -18,18 +18,58 @@
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
 	<string>1.0.0</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>cc.timebase.ios</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>timebase</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleVersion</key>
 	<string>1</string>
 	<key>NSCalendarsFullAccessUsageDescription</key>
 	<string>Timebase shows your upcoming events as live countdowns.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Timebase uses your location to set your home city.</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>NSUbiquitousKeyValueStoreUsageDescription</key>
 	<string>Timebase syncs your cities across your devices via iCloud.</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>CrimsonText-SemiBold.ttf</string>
 		<string>DepartureMono-Regular.otf</string>
+	</array>
+	<key>UIApplicationShortcutItems</key>
+	<array>
+		<dict>
+			<key>UIApplicationShortcutItemIconType</key>
+			<string>UIApplicationShortcutIconTypeCompose</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Plan a meeting</string>
+			<key>UIApplicationShortcutItemType</key>
+			<string>cc.timebase.shortcut.scheduler</string>
+		</dict>
+		<dict>
+			<key>UIApplicationShortcutItemIconType</key>
+			<string>UIApplicationShortcutIconTypeDate</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Up Next</string>
+			<key>UIApplicationShortcutItemType</key>
+			<string>cc.timebase.shortcut.upnext</string>
+		</dict>
+		<dict>
+			<key>UIApplicationShortcutItemIconType</key>
+			<string>UIApplicationShortcutIconTypeFavorite</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Settings</string>
+			<key>UIApplicationShortcutItemType</key>
+			<string>cc.timebase.shortcut.settings</string>
+		</dict>
 	</array>
 	<key>UILaunchScreen</key>
 	<dict/>

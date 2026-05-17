@@ -39,6 +39,21 @@ targets:
         UIAppFonts:
           - CrimsonText-SemiBold.ttf
           - DepartureMono-Regular.otf
+        NSSupportsLiveActivities: true
+        CFBundleURLTypes:
+          - CFBundleURLName: cc.timebase.ios
+            CFBundleURLSchemes:
+              - timebase
+        UIApplicationShortcutItems:
+          - UIApplicationShortcutItemType: cc.timebase.shortcut.scheduler
+            UIApplicationShortcutItemTitle: Plan a meeting
+            UIApplicationShortcutItemIconType: UIApplicationShortcutIconTypeCompose
+          - UIApplicationShortcutItemType: cc.timebase.shortcut.upnext
+            UIApplicationShortcutItemTitle: Up Next
+            UIApplicationShortcutItemIconType: UIApplicationShortcutIconTypeDate
+          - UIApplicationShortcutItemType: cc.timebase.shortcut.settings
+            UIApplicationShortcutItemTitle: Settings
+            UIApplicationShortcutItemIconType: UIApplicationShortcutIconTypeFavorite
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: cc.timebase.ios

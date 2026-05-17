@@ -71,6 +71,12 @@ struct UpNextScreen: View {
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
+        .onChange(of: store.pendingShowScheduler) { _, pending in
+            if pending {
+                showScheduler = true
+                store.pendingShowScheduler = false
+            }
+        }
         .sheet(item: $selectedEvent) { event in
             EventDetailSheet(upcoming: event)
                 .presentationDetents([.large])

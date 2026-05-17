@@ -68,6 +68,14 @@ final class TimebaseStore {
 
     /// Current page in the horizontal TabView.
     var currentTab: ScreenTab = .clock
+
+    /// Trips when a deep link wants the scheduler to open. UpNextScreen
+    /// watches this and presents `SchedulerSheet`, then resets the flag.
+    var pendingShowScheduler = false
+
+    /// Triggered when the easter-egg quick action fires. Briefly shows a
+    /// time-of-day greeting overlay.
+    var greeting: String?
     var upcomingEvents: [UpcomingEvent] = []
     var calendarAccessGranted = false
 
@@ -224,8 +232,10 @@ final class TimebaseStore {
         hasCompletedOnboarding = false
         scrubOffsetMinutes = 0
         upcomingEvents = []
-        UserDefaults.standard.removeObject(forKey: "timebase.v1")
+        UserDefaults.standard.removeObject(forKey: Self.storageKey)
+        Self.sharedDefaults.removeObject(forKey: Self.storageKey)
         cloudStore.clear()
+        WidgetReload.requestAllTimelinesReload()
     }
 
     // MARK: - Events / Calendar
@@ -251,19 +261,34 @@ final class TimebaseStore {
         var hasCompletedOnboarding: Bool
     }
 
+    /// Persisted state lives in an App Group container so extensions
+    /// (widgets, Live Activities, control center) can read the same blob.
+    static let appGroup = "group.cc.timebase.ios"
+    static let storageKey = "timebase.v1"
+    static var sharedDefaults: UserDefaults {
+        UserDefaults(suiteName: appGroup) ?? .standard
+    }
+
     private func save() {
         let snapshot = Persisted(
             cities: cities, homeCityId: homeCityId,
             settings: settings, hasCompletedOnboarding: hasCompletedOnboarding
         )
         guard let data = try? JSONEncoder().encode(snapshot) else { return }
-        UserDefaults.standard.set(data, forKey: "timebase.v1")
+        Self.sharedDefaults.set(data, forKey: Self.storageKey)
+        // Mirror to standard defaults for backward compat with older installs.
+        UserDefaults.standard.set(data, forKey: Self.storageKey)
         cloudStore.save(data)
+        // Tell widgets to refresh their timelines.
+        WidgetReload.requestAllTimelinesReload()
     }
 
     private func load() {
-        // Prefer iCloud KV if it has data; else fall back to UserDefaults.
-        let data = cloudStore.load() ?? UserDefaults.standard.data(forKey: "timebase.v1")
+        // Priority: iCloud KV (cross-device) → App Group → UserDefaults
+        // (legacy install).
+        let data = cloudStore.load()
+            ?? Self.sharedDefaults.data(forKey: Self.storageKey)
+            ?? UserDefaults.standard.data(forKey: Self.storageKey)
         guard let data,
               let snapshot = try? JSONDecoder().decode(Persisted.self, from: data) else {
             return

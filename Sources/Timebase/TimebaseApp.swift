@@ -3,6 +3,7 @@ import SwiftUI
 @main
 struct TimebaseApp: App {
     @State private var store = TimebaseStore()
+    @State private var motion = MotionStore()
     @StateObject private var weather = WeatherStore()
     @Environment(\.scenePhase) private var scenePhaseEnvironment
 
@@ -10,15 +11,31 @@ struct TimebaseApp: App {
         WindowGroup {
             RootView()
                 .environment(store)
+                .environment(motion)
                 .environmentObject(weather)
                 .preferredColorScheme(store.settings.appearance.preferred)
                 .task {
                     await store.bootstrap()
                     autoRotateIfNeeded()
+                    Greeting.updateDynamicShortcut()
+                    motion.start()
+                    await SpotlightIndexer.reindex(cities: store.cities)
                     await weather.refreshAll(cities: store.cities)
                 }
                 .onChange(of: scenePhaseEnvironment) { _, phase in
-                    if phase == .active { autoRotateIfNeeded() }
+                    switch phase {
+                    case .active:
+                        autoRotateIfNeeded()
+                        Greeting.updateDynamicShortcut()
+                        motion.start()
+                    case .background:
+                        motion.stop()
+                    default:
+                        break
+                    }
+                }
+                .onOpenURL { url in
+                    DeepLinkRouter.handle(url: url, store: store)
                 }
         }
     }
