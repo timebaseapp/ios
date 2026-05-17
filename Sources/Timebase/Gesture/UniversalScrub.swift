@@ -45,7 +45,7 @@ struct UniversalScrubContainer<Content: View>: UIViewControllerRepresentable {
             r.setTranslation(.zero, in: r.view)
         }
 
-        @objc func doubleTap(_ r: UITapGestureRecognizer) {
+        @objc func handleTbScrubReset(_ r: UITapGestureRecognizer) {
             onDoubleTap()
         }
 
@@ -83,7 +83,7 @@ final class ScrubHostingController<Content: View>: UIHostingController<Content> 
         view.addGestureRecognizer(pan)
         self.panRecognizer = pan
 
-        let dbl = UITapGestureRecognizer(target: coordinator, action: #selector(UniversalScrubContainer<Content>.Coordinator.doubleTap(_:)))
+        let dbl = UITapGestureRecognizer(target: coordinator, action: #selector(UniversalScrubContainer<Content>.Coordinator.handleTbScrubReset(_:)))
         dbl.numberOfTapsRequired = 2
         dbl.delegate = coordinator
         dbl.cancelsTouchesInView = false

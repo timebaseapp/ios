@@ -116,6 +116,23 @@ lane :beta do
 
   ensure_clean_xcode_project
 
+  # Ensure App Store distribution provisioning profiles exist locally for
+  # both bundle IDs. sigh creates / refreshes them via the ASC API key and
+  # installs into ~/Library/MobileDevice/Provisioning Profiles/ so
+  # xcodebuild can find them at archive time.
+  sigh(
+    api_key: api_key,
+    app_identifier: APP_ID,
+    team_id: TEAM_ID,
+    force: true
+  )
+  sigh(
+    api_key: api_key,
+    app_identifier: WIDGETS_ID,
+    team_id: TEAM_ID,
+    force: true
+  )
+
   # Bump build number based on TestFlight's latest, +1
   latest = latest_testflight_build_number(
     api_key: api_key,
