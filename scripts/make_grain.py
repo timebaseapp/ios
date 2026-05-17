@@ -11,7 +11,7 @@ import random
 random.seed(7)
 
 SIZE = 512
-OUT = os.path.join(os.path.dirname(__file__), "..", "Sources/Timebase/Assets.xcassets/Grain.imageset")
+OUT = os.path.join(os.path.dirname(__file__), "..", "Sources/Timebase/Assets.xcassets/grain.imageset")
 WEB_OUT = os.path.join(os.path.dirname(__file__), "..", "..", "web/grain.png")
 
 
