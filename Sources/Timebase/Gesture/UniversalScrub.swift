@@ -15,20 +15,20 @@ struct UniversalScrubModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .contentShape(Rectangle())
-            .gesture(
-                DragGesture(minimumDistance: 4)
+            // Simultaneous gesture so TabView's horizontal page-pan still
+            // sees the touch. We only ACT on vertical-dominant motion;
+            // diagonal/horizontal drags fall through to the TabView.
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 8)
                     .onChanged { value in
                         let dy = value.translation.height
                         let dx = value.translation.width
-                        // Require vertical-dominant motion to claim the gesture.
-                        // If the user starts dragging horizontally, let TabView
-                        // take it.
-                        guard Swift.abs(dy) > Swift.abs(dx) else { return }
+                        guard Swift.abs(dy) > Swift.abs(dx) * 1.4 else { return }
                         if !dragActive {
                             initialOffset = store.scrubOffsetMinutes
                             dragActive = true
                         }
-                        let projected = -dy   // up = advance
+                        let projected = -dy
                         store.scrubOffsetMinutes = initialOffset + Double(projected) / Self.pixelsPerMinute
                         triggerHapticsIfNeeded()
                     }

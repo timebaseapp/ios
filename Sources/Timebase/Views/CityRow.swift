@@ -50,7 +50,9 @@ struct CityRow: View {
 
     @ViewBuilder
     private func timeAndDay(in tz: TimeZone, date: Date) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
+        // .center so the padded chip sits visually centered against the
+        // heavy time numerals (firstTextBaseline made the chip look low).
+        HStack(alignment: .center, spacing: 8) {
             Text(formattedTime(date: date, tz: tz))
                 .font(.system(size: 28, weight: .heavy))
                 .monospacedDigit()

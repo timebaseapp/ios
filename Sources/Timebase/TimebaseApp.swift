@@ -41,7 +41,7 @@ struct MainPager: View {
             SettingsScreen().tag(ScreenTab.settings)
         }
         .tabViewStyle(.page(indexDisplayMode: .never))
-        .ignoresSafeArea(edges: .top)
+        .ignoresSafeArea()
         .onAppear { Haptics.prepare() }
     }
 }
