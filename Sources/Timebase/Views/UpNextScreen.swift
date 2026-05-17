@@ -37,7 +37,10 @@ struct UpNextScreen: View {
 
                 ScrollView {
                     LazyVStack(spacing: 12) {
-                        UpNextSection()
+                        UpNextSection(onTap: { event in
+                            Haptics.buttonPressed()
+                            selectedEvent = event
+                        })
 
                         Button {
                             Haptics.buttonPressed()
@@ -73,26 +76,11 @@ struct UpNextScreen: View {
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
-        .environment(\.upNextOnTap, { event in
-            Haptics.buttonPressed()
-            selectedEvent = event
-        })
-    }
-}
-
-/// Passes the "tap an event card" callback down to the EventCard rendering
-/// in UpNextSection without making the section/card know about the parent.
-private struct UpNextOnTapKey: EnvironmentKey {
-    @MainActor static let defaultValue: ((UpcomingEvent) -> Void)? = nil
-}
-extension EnvironmentValues {
-    var upNextOnTap: ((UpcomingEvent) -> Void)? {
-        get { self[UpNextOnTapKey.self] }
-        set { self[UpNextOnTapKey.self] = newValue }
     }
 }
 
 private struct UpNextSection: View {
+    let onTap: (UpcomingEvent) -> Void
     @Environment(TimebaseStore.self) private var store
     @State private var tick = Date()
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
@@ -105,7 +93,7 @@ private struct UpNextSection: View {
                 noEventsState
             } else {
                 ForEach(store.upcomingEvents) { event in
-                    EventCard(event: event, now: tick)
+                    EventCard(event: event, now: tick, onTap: onTap)
                 }
             }
         }
@@ -144,9 +132,9 @@ private struct UpNextSection: View {
 private struct EventCard: View {
     let event: UpcomingEvent
     let now: Date
+    let onTap: (UpcomingEvent) -> Void
     @Environment(TimebaseStore.self) private var store
     @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.upNextOnTap) private var onTap
 
     var body: some View {
         let hourAtHome = fractionalHourAtHome
@@ -192,7 +180,7 @@ private struct EventCard: View {
                 .stroke(.primary.opacity(0.08), lineWidth: 0.5)
         )
         .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .onTapGesture { onTap?(event) }
+        .onTapGesture { onTap(event) }
     }
 
     private var homeTimeZone: TimeZone {
