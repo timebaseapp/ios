@@ -29,16 +29,15 @@ struct CityRow: View {
         .background(
             ZStack {
                 LinearGradient(colors: gradient, startPoint: .top, endPoint: .bottom)
-                // Vertical fluted glass — soft cylindrical ribs drawn
-                // directly so the rib width is exact and the contrast doesn't
-                // get crushed by asset scaling.
-                FlutedGlassLayer()
-                    .allowsHitTesting(false)
-                // Paper grain (high-frequency noise underneath the glass)
                 Image("grain")
                     .resizable(resizingMode: .tile)
                     .blendMode(.softLight)
-                    .opacity(0.90)
+                    .opacity(0.95)
+                    .allowsHitTesting(false)
+                Image("grain")
+                    .resizable(resizingMode: .tile)
+                    .blendMode(.overlay)
+                    .opacity(0.35)
                     .allowsHitTesting(false)
             }
         )

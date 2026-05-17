@@ -75,26 +75,12 @@ def render_icon(size: int) -> Image.Image:
             n = int(random.gauss(0, 18))
             gp[x, y] = max(0, min(255, 128 + n))
 
-    # Fluted glass — soft vertical cylindrical ribs running top-to-bottom
-    # across the full square. Ribs scale up to icon resolution (~115px each
-    # on the 1024 master = ~9 ribs across).
-    RIB_W_ICON = 115
-    fl = Image.new("L", (size, size), 0)
-    flp = fl.load()
-    for x in range(size):
-        t = (x % RIB_W_ICON) / RIB_W_ICON
-        v = math.cos(t * 2 * math.pi)
-        intensity = int(128 + v * 42)
-        intensity = max(0, min(255, intensity))
-        for y in range(size):
-            flp[x, y] = intensity
-
-    # Composite grain + flutes via 'overlay' blend.
+    # Composite grain only via 'overlay' blend at ~28% strength.
+    # No flutes — the horizontal sunset bands carry the look on their own.
     out = Image.new("RGB", (size, size))
     op = out.load()
     ip = img.load()
     gp = grain.load()
-    flp = fl.load()
 
     def overlay(cf, n):
         if n < 0.5:
@@ -105,14 +91,11 @@ def render_icon(size: int) -> Image.Image:
         for x in range(size):
             r, g, b = ip[x, y]
             ng = gp[x, y] / 255.0
-            nf = flp[x, y] / 255.0
             def blend(c):
                 cf = c / 255.0
-                v1 = overlay(cf, ng)
-                cf2 = cf * 0.78 + v1 * 0.22       # grain at ~22%
-                v2 = overlay(cf2, nf)
-                cf3 = cf2 * 0.65 + v2 * 0.35      # flutes at ~35%
-                return int(max(0, min(255, cf3 * 255)))
+                v = overlay(cf, ng)
+                cf2 = cf * 0.72 + v * 0.28
+                return int(max(0, min(255, cf2 * 255)))
             op[x, y] = (blend(r), blend(g), blend(b))
 
     return out
