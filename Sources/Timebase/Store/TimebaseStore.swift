@@ -2,6 +2,12 @@ import Foundation
 import SwiftUI
 import Observation
 
+enum ScreenTab: Int, Hashable {
+    case upNextAbout = 0
+    case clock = 1
+    case settings = 2
+}
+
 enum Appearance: String, Codable, CaseIterable {
     case system, light, dark
 
@@ -47,12 +53,20 @@ final class TimebaseStore {
     var scrubOffsetMinutes: Double = 0 {
         didSet {
             let bound = Self.scrubBoundMinutes
-            if scrubOffsetMinutes > bound { scrubOffsetMinutes = bound }
-            else if scrubOffsetMinutes < -bound { scrubOffsetMinutes = -bound }
+            if scrubOffsetMinutes > bound {
+                scrubOffsetMinutes = bound
+                if oldValue < bound { Haptics.scrubCapHit() }
+            } else if scrubOffsetMinutes < -bound {
+                scrubOffsetMinutes = -bound
+                if oldValue > -bound { Haptics.scrubCapHit() }
+            }
         }
     }
 
     static let scrubBoundMinutes: Double = 2 * 24 * 60
+
+    /// Current page in the horizontal TabView.
+    var currentTab: ScreenTab = .clock
     var upcomingEvents: [UpcomingEvent] = []
     var calendarAccessGranted = false
 
@@ -122,9 +136,19 @@ final class TimebaseStore {
     }
 
     func snapToNow() {
+        guard scrubOffsetMinutes != 0 else { return }
         withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
             scrubOffsetMinutes = 0
         }
+        Haptics.snapToNow()
+    }
+
+    func goTo(tab: ScreenTab) {
+        guard currentTab != tab else { return }
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.86)) {
+            currentTab = tab
+        }
+        Haptics.pageChanged()
     }
 
     func scrub(by deltaPixels: CGFloat) {

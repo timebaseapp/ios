@@ -29,6 +29,13 @@ struct CityRow: View {
         .background(
             ZStack {
                 LinearGradient(colors: gradient, startPoint: .top, endPoint: .bottom)
+                // Fluted glass — low-frequency vertical ribs
+                Image("flutes")
+                    .resizable(resizingMode: .tile)
+                    .blendMode(.overlay)
+                    .opacity(0.20)
+                    .allowsHitTesting(false)
+                // Paper grain — high-frequency noise
                 Image("grain")
                     .resizable(resizingMode: .tile)
                     .blendMode(.softLight)

@@ -25,7 +25,24 @@ struct RootView: View {
         if !store.hasCompletedOnboarding {
             OnboardingView()
         } else {
-            ClockListView()
+            MainPager()
         }
+    }
+}
+
+struct MainPager: View {
+    @Environment(TimebaseStore.self) private var store
+
+    var body: some View {
+        @Bindable var bindable = store
+        TabView(selection: $bindable.currentTab) {
+            UpNextAboutScreen().tag(ScreenTab.upNextAbout)
+            ClockListView().tag(ScreenTab.clock)
+            SettingsScreen().tag(ScreenTab.settings)
+        }
+        .tabViewStyle(.page(indexDisplayMode: .always))
+        .indexViewStyle(.page(backgroundDisplayMode: .interactive))
+        .ignoresSafeArea(edges: .top)
+        .onAppear { Haptics.prepare() }
     }
 }

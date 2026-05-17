@@ -1,16 +1,14 @@
 import SwiftUI
-import UIKit
 
-/// One universal pan that translates `dx + (-dy)` into a scrub delta.
-/// Up-and-right advances time, down-and-left rewinds. Pure direct
-/// manipulation — no inertia, no momentum, no springback. The world moves
-/// with your finger and stops the moment you release.
+/// Vertical-only scrub. Horizontal drag is reserved for TabView page swipe.
+/// Drag up → advance time. Drag down → rewind. Pure direct manipulation,
+/// no inertia, no springback.
 struct UniversalScrubModifier: ViewModifier {
     @Environment(TimebaseStore.self) private var store
     @State private var initialOffset: Double = 0
     @State private var dragActive = false
     @State private var lastHapticHour: Int? = nil
-    private let haptic = UIImpactFeedbackGenerator(style: .soft)
+    @State private var lastHapticDay: Int? = nil
 
     static let pixelsPerMinute: Double = 0.5
 
@@ -18,33 +16,42 @@ struct UniversalScrubModifier: ViewModifier {
         content
             .contentShape(Rectangle())
             .gesture(
-                DragGesture(minimumDistance: 2)
+                DragGesture(minimumDistance: 4)
                     .onChanged { value in
+                        let dy = value.translation.height
+                        let dx = value.translation.width
+                        // Require vertical-dominant motion to claim the gesture.
+                        // If the user starts dragging horizontally, let TabView
+                        // take it.
+                        guard Swift.abs(dy) > Swift.abs(dx) else { return }
                         if !dragActive {
                             initialOffset = store.scrubOffsetMinutes
                             dragActive = true
-                            haptic.prepare()
                         }
-                        let projected = value.translation.width + (-value.translation.height)
+                        let projected = -dy   // up = advance
                         store.scrubOffsetMinutes = initialOffset + Double(projected) / Self.pixelsPerMinute
-                        triggerHapticIfNeeded()
+                        triggerHapticsIfNeeded()
                     }
-                    .onEnded { _ in
-                        dragActive = false
-                    }
+                    .onEnded { _ in dragActive = false }
             )
             .onTapGesture(count: 2) { store.snapToNow() }
     }
 
-    private func triggerHapticIfNeeded() {
+    private func triggerHapticsIfNeeded() {
         guard let home = store.homeCity else { return }
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = home.timeZoneObject
-        let h = cal.component(.hour, from: store.displayDate)
-        if lastHapticHour != h {
-            haptic.impactOccurred(intensity: 0.4)
-            lastHapticHour = h
+        let comps = cal.dateComponents([.year, .month, .day, .hour], from: store.displayDate)
+        let h = comps.hour ?? 0
+        // Day boundary fires the heavier haptic first; hour boundary as a fallback.
+        let dayKey = ((comps.year ?? 0) * 10000) + ((comps.month ?? 0) * 100) + (comps.day ?? 0)
+        if lastHapticDay != dayKey && lastHapticDay != nil {
+            Haptics.scrubDayBoundary()
+        } else if lastHapticHour != h && lastHapticHour != nil {
+            Haptics.scrubHourBoundary()
         }
+        lastHapticHour = h
+        lastHapticDay = dayKey
     }
 }
 
