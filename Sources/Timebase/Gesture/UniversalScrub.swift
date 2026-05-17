@@ -49,13 +49,14 @@ struct UniversalScrubContainer<Content: View>: UIViewControllerRepresentable {
             onDoubleTap()
         }
 
-        // Coexist with TabView's pan + scroll views.
-        nonisolated func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+        // Coexist with TabView's pan + scroll views. UIKit calls these on
+        // the main thread; let them be MainActor-isolated.
+        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
             true
         }
 
         // Don't intercept touches over UIControls so buttons still fire.
-        nonisolated func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
             if touch.view is UIControl { return false }
             return true
         }
