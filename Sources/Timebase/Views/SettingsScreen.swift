@@ -26,9 +26,9 @@ struct SettingsScreen: View {
                             } label: {
                                 HStack {
                                     Image(systemName: "plus")
-                                        .font(.system(size: 13, weight: .heavy))
+                                        .font(.system(size: 14, weight: .semibold))
                                     Text("Add city")
-                                        .font(.custom("DepartureMono-Regular", size: 13))
+                                        .font(.system(size: 16))
                                     Spacer()
                                 }
                                 .padding(.horizontal, 16)
@@ -44,7 +44,7 @@ struct SettingsScreen: View {
                         section(title: "PREFERENCES") {
                             HStack {
                                 Text("24-hour time")
-                                    .font(.custom("DepartureMono-Regular", size: 13))
+                                    .font(.system(size: 16))
                                 Spacer()
                                 Picker("", selection: $bindable.settings.hourPreference) {
                                     Text("System").tag(HourPreference.system)
@@ -59,7 +59,7 @@ struct SettingsScreen: View {
 
                             HStack {
                                 Text("Theme")
-                                    .font(.custom("DepartureMono-Regular", size: 13))
+                                    .font(.system(size: 16))
                                 Spacer()
                                 Picker("", selection: $bindable.settings.appearance) {
                                     Text("System").tag(Appearance.system)
@@ -74,17 +74,17 @@ struct SettingsScreen: View {
 
                             HStack {
                                 Text("Calendar")
-                                    .font(.custom("DepartureMono-Regular", size: 13))
+                                    .font(.system(size: 16))
                                 Spacer()
                                 if store.calendarAccessGranted {
                                     Text("Connected")
-                                        .font(.custom("DepartureMono-Regular", size: 11))
+                                        .font(.system(size: 14))
                                         .foregroundStyle(.secondary)
                                 } else {
                                     Button("Connect") {
                                         Task { await store.requestCalendarAccess() }
                                     }
-                                    .font(.custom("DepartureMono-Regular", size: 11))
+                                    .font(.system(size: 14))
                                 }
                             }
                             .padding(.horizontal, 16)
@@ -102,7 +102,7 @@ struct SettingsScreen: View {
                             } label: {
                                 HStack {
                                     Text("Reset all data")
-                                        .font(.custom("DepartureMono-Regular", size: 13))
+                                        .font(.system(size: 16))
                                     Spacer()
                                 }
                                 .padding(.horizontal, 16)
@@ -160,27 +160,27 @@ struct SettingsScreen: View {
 
     @ViewBuilder
     private func cityRow(_ city: City) -> some View {
-        HStack {
+        HStack(spacing: 8) {
             if city.id == store.homeCityId {
                 Text("🏠")
                     .font(.system(size: 14))
             }
             Text(city.name)
-                .font(.custom("DepartureMono-Regular", size: 13))
+                .font(.system(size: 16))
             Spacer()
             if city.id != store.homeCityId {
                 Button {
                     store.makeHome(cityId: city.id)
                 } label: {
                     Text("Set home")
-                        .font(.custom("DepartureMono-Regular", size: 10))
+                        .font(.system(size: 13))
                         .foregroundStyle(.secondary)
                 }
                 Button(role: .destructive) {
                     store.remove(cityId: city.id)
                 } label: {
                     Image(systemName: "trash")
-                        .font(.system(size: 13))
+                        .font(.system(size: 14))
                         .foregroundStyle(.secondary)
                 }
             }
@@ -193,7 +193,7 @@ struct SettingsScreen: View {
     private func comingSoonRow(_ label: String) -> some View {
         HStack {
             Text(label)
-                .font(.custom("DepartureMono-Regular", size: 13))
+                .font(.system(size: 16))
                 .foregroundStyle(.secondary)
             Spacer()
             Text("—")
