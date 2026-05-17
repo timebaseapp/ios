@@ -4,7 +4,7 @@ APP_ID       = "cc.timebase.ios"
 WIDGETS_ID   = "cc.timebase.ios.widgets"
 APP_GROUP    = "group.cc.timebase.ios"
 TEAM_ID      = "VRNNS4H6XH"
-APP_NAME     = "Timebase"
+APP_NAME     = "Timezone World Clock: Timebase"
 SCHEME       = "Timebase"
 ICLOUD_CTNR  = "iCloud.cc.timebase.ios"
 
@@ -91,7 +91,7 @@ lane :bootstrap_asc do
   produce(
     app_identifier: APP_ID,
     app_name: APP_NAME,
-    language: "English (U.S.)",
+    language: "en-US",
     sku: "timebase-ios-v1",
     team_id: TEAM_ID,
     skip_itc: false,
