@@ -51,14 +51,15 @@ struct AddCitySheet: View {
         return HStack {
             Text(city.name)
             Spacer()
-            Text(alreadyAdded ? "\(city.country) · added" : city.country)
+            Text(alreadyAdded ? "\(city.country) · added (tap to remove)" : city.country)
                 .font(.system(size: 13))
                 .foregroundStyle(.secondary)
         }
         .contentShape(Rectangle())
-        .opacity(alreadyAdded ? 0.5 : 1)
         .onTapGesture {
-            if !alreadyAdded {
+            if alreadyAdded {
+                store.remove(cityId: city.id)
+            } else {
                 store.add(city: city)
                 dismiss()
             }
