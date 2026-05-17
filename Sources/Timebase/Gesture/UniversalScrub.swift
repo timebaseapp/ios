@@ -63,9 +63,15 @@ struct UniversalScrubContainer<Content: View>: UIViewControllerRepresentable {
 }
 
 final class ScrubHostingController<Content: View>: UIHostingController<Content> {
+    @MainActor
     init(rootView: Content, coordinator: UniversalScrubContainer<Content>.Coordinator) {
         super.init(rootView: rootView)
         view.backgroundColor = .clear
+        // Allow the SwiftUI content to extend through the host's safe area.
+        // .ignoresSafeArea() on the content inside handles the rest.
+        if #available(iOS 16.4, *) {
+            self.safeAreaRegions = []
+        }
 
         let pan = VerticalPanRecognizer(target: coordinator, action: #selector(UniversalScrubContainer<Content>.Coordinator.pan(_:)))
         pan.delegate = coordinator
@@ -107,7 +113,10 @@ final class VerticalPanRecognizer: UIPanGestureRecognizer {
               let now = touches.first?.location(in: view?.window) else { return }
         let dx = abs(now.x - start.x)
         let dy = abs(now.y - start.y)
-        if dx > 10 && dx > dy * 1.1 {
+        // Strong bias toward vertical: only bow out if motion is clearly
+        // horizontal-dominant. This lets diagonal/wiggly drags still scrub
+        // vertically without accidentally swiping pages.
+        if dx > 18 && dx > dy * 2.0 {
             state = .failed
         }
     }

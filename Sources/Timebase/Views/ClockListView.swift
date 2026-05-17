@@ -26,7 +26,8 @@ struct ClockListView: View {
                                 Button("Details") { detailCity = city }
                             }
                     }
-                },
+                }
+                .ignoresSafeArea(),
                 onVerticalPan: { dy in
                     // dy > 0 = drag down (rewind), dy < 0 = drag up (advance)
                     store.scrubOffsetMinutes += Double(-dy) / scrubPixelsPerMinute
