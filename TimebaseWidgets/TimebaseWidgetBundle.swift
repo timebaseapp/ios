@@ -5,6 +5,7 @@ import SwiftUI
 struct TimebaseWidgetBundle: WidgetBundle {
     var body: some Widget {
         WorldClockWidget()
+        CountdownWidget()
         if #available(iOSApplicationExtension 16.2, *) {
             EventCountdownLiveActivity()
         }

@@ -250,7 +250,32 @@ final class TimebaseStore {
         guard calendarService.hasAccess else { return }
         upcomingEvents = await calendarService.upcomingEvents()
         calendarAccessGranted = true
+        persistEventsToAppGroup()
         await EventCountdownActivityManager.sync(store: self)
+        WidgetReload.requestAllTimelinesReload()
+    }
+
+    /// Writes upcoming events to the App Group so the countdown widgets
+    /// can read them without EventKit access.
+    private func persistEventsToAppGroup() {
+        struct Snapshot: Codable {
+            let id: String
+            let title: String
+            let startDate: Date
+            let endDate: Date
+            let timezoneIdentifier: String
+        }
+        let snapshots = upcomingEvents.prefix(20).map {
+            Snapshot(
+                id: $0.id,
+                title: $0.title,
+                startDate: $0.startDate,
+                endDate: $0.endDate,
+                timezoneIdentifier: $0.timezone.identifier
+            )
+        }
+        guard let data = try? JSONEncoder().encode(Array(snapshots)) else { return }
+        Self.sharedDefaults.set(data, forKey: "timebase.events.v1")
     }
 
     // MARK: - Persistence

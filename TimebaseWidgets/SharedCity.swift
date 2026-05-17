@@ -21,15 +21,37 @@ struct WidgetPersisted: Codable {
     var homeCityId: String?
 }
 
+/// Lightweight upcoming-event shape used by the countdown widgets.
+struct WidgetEvent: Codable, Hashable, Identifiable {
+    let id: String
+    let title: String
+    let startDate: Date
+    let endDate: Date
+    let timezoneIdentifier: String
+
+    var timeZone: TimeZone { TimeZone(identifier: timezoneIdentifier) ?? .current }
+}
+
 enum WidgetStore {
     static let appGroup = "group.cc.timebase.ios"
     static let storageKey = "timebase.v1"
+    static let eventsKey = "timebase.events.v1"
 
     /// Reads the cities + home from the shared App Group.
     static func load() -> WidgetPersisted? {
         let defaults = UserDefaults(suiteName: appGroup)
         guard let data = defaults?.data(forKey: storageKey) else { return nil }
         return try? JSONDecoder().decode(WidgetPersisted.self, from: data)
+    }
+
+    /// Reads upcoming events written by the host app on each EventKit refresh.
+    static func loadEvents() -> [WidgetEvent] {
+        let defaults = UserDefaults(suiteName: appGroup)
+        guard let data = defaults?.data(forKey: eventsKey),
+              let events = try? JSONDecoder().decode([WidgetEvent].self, from: data) else {
+            return []
+        }
+        return events.filter { $0.endDate > Date() }.sorted { $0.startDate < $1.startDate }
     }
 
     /// Default placeholder cities used when the App Group hasn't been
