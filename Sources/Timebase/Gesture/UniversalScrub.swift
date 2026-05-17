@@ -94,21 +94,11 @@ final class ScrubHostingController<Content: View>: UIHostingController<Content> 
         fatalError("not implemented")
     }
 
-    override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
-        // Walk up to find TabView's internal UIScrollView and force its pan
-        // to wait for ours to fail. If ours succeeds (vertical scrub), its
-        // pan is cancelled → no accidental page switch mid-scrub.
-        guard let myPan = panRecognizer else { return }
-        var current: UIView? = view
-        while let v = current {
-            if let sv = v as? UIScrollView {
-                sv.panGestureRecognizer.require(toFail: myPan)
-                break
-            }
-            current = v.superview
-        }
-    }
+    // require(toFail:) is gone — it was making TabView's pan WAIT for ours
+    // to fail, which never happened fast enough for horizontal motion and
+    // killed single-finger swipes. The recognizer's own early-fail logic
+    // (touchesMoved before super) plus shouldRecognizeSimultaneouslyWith
+    // returning false for other pans now provides clean mutual exclusion.
 }
 
 /// Pan recognizer that fails fast if the user's motion is horizontal-dominant,
@@ -127,18 +117,24 @@ final class VerticalPanRecognizer: UIPanGestureRecognizer {
     }
 
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent) {
-        super.touchesMoved(touches, with: event)
-        guard state == .possible,
-              let start = firstPoint,
-              let now = touches.first?.location(in: view?.window) else { return }
-        let dx = abs(now.x - start.x)
-        let dy = abs(now.y - start.y)
-        // Strong bias toward vertical: only bow out if motion is clearly
-        // horizontal-dominant. This lets diagonal/wiggly drags still scrub
-        // vertically without accidentally swiping pages.
-        if dx > 18 && dx > dy * 2.0 {
-            state = .failed
+        // Decide direction BEFORE super processes the touch — otherwise super
+        // can transition to .began (at ~10pt default) and fire .changed once
+        // with horizontal motion's small vertical component before we get a
+        // chance to fail.
+        if state == .possible,
+           let start = firstPoint,
+           let now = touches.first?.location(in: view?.window) {
+            let dx = abs(now.x - start.x)
+            let dy = abs(now.y - start.y)
+            let dist = hypot(now.x - start.x, now.y - start.y)
+            // 4pt is enough to read direction reliably. If the dominant
+            // axis is horizontal, fail now — TabView's pan can claim.
+            if dist >= 4 && dx > dy {
+                state = .failed
+                return
+            }
         }
+        super.touchesMoved(touches, with: event)
     }
 }
 
