@@ -6,6 +6,7 @@ import SwiftUI
 /// is scheduled.
 struct UpNextScreen: View {
     @Environment(TimebaseStore.self) private var store
+    @State private var showScheduler = false
 
     var body: some View {
         ZStack {
@@ -14,18 +15,50 @@ struct UpNextScreen: View {
             VStack(spacing: 0) {
                 TrafficLightsBar()
 
-                ScreenHeader(title: "Up Next")
-                    .padding(.top, 2)
-                    .padding(.bottom, 18)
+                ZStack {
+                    ScreenHeader(title: "Up Next")
+                    HStack {
+                        Spacer()
+                        Button {
+                            Haptics.buttonPressed()
+                            showScheduler = true
+                        } label: {
+                            Image(systemName: "plus")
+                                .font(.system(size: 17, weight: .semibold))
+                                .foregroundStyle(.primary)
+                                .frame(width: 36, height: 36)
+                        }
+                        .padding(.trailing, 14)
+                    }
+                }
+                .padding(.top, 2)
+                .padding(.bottom, 18)
 
                 ScrollView {
                     LazyVStack(spacing: 12) {
                         UpNextSection()
+
+                        Button {
+                            Haptics.buttonPressed()
+                            showScheduler = true
+                        } label: {
+                            Text("Plan a meeting")
+                                .font(.system(size: 14, weight: .semibold))
+                                .padding(.horizontal, 22)
+                                .frame(height: 42)
+                        }
+                        .buttonStyle(SkeuomorphicPillButtonStyle())
+                        .padding(.top, 18)
                     }
                     .padding(.horizontal, 16)
                     .padding(.bottom, 40)
                 }
             }
+        }
+        .sheet(isPresented: $showScheduler) {
+            SchedulerSheet()
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
         }
     }
 }
@@ -86,7 +119,6 @@ private struct EventCard: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        let secondsToStart = event.startDate.timeIntervalSince(now)
         let hourAtHome = fractionalHourAtHome
         let gradient = TimeColor.backgroundGradient(forHour: hourAtHome, scheme: colorScheme)
         let fg = TimeColor.foreground(forHour: hourAtHome, scheme: colorScheme)
@@ -95,10 +127,7 @@ private struct EventCard: View {
             Text(event.title)
                 .font(.system(size: 17, weight: .regular))
 
-            Text(TimebaseFormatters.relative(seconds: secondsToStart))
-                .font(.system(size: 38, weight: .heavy))
-                .monospacedDigit()
-                .kerning(-0.8)
+            CountdownText(target: event.startDate)
 
             HStack(spacing: 0) {
                 Text(format(event.startDate, in: homeTimeZone))

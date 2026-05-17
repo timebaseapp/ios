@@ -3,7 +3,7 @@ import EventKit
 
 @MainActor
 final class EventKitService {
-    private let store = EKEventStore()
+    let store = EKEventStore()
 
     var hasAccess: Bool {
         if #available(iOS 17, *) {
@@ -11,6 +11,28 @@ final class EventKitService {
         } else {
             return EKEventStore.authorizationStatus(for: .event) == .authorized
         }
+    }
+
+    /// The default calendar new events save into. Apple's EKEventEditView uses
+    /// this by default; we expose it for our own scheduler flow.
+    var defaultCalendar: EKCalendar? {
+        store.defaultCalendarForNewEvents
+    }
+
+    /// Build a fresh EKEvent ready to hand to EKEventEditViewController.
+    func makeDraftEvent(title: String, start: Date, end: Date) -> EKEvent {
+        let event = EKEvent(eventStore: store)
+        event.title = title
+        event.startDate = start
+        event.endDate = end
+        event.calendar = defaultCalendar
+        return event
+    }
+
+    /// Save an event directly (without presenting the editor). Used if a
+    /// future "quick save" path appears; current flow uses EKEventEditView.
+    func save(event: EKEvent) throws {
+        try store.save(event, span: .thisEvent, commit: true)
     }
 
     func requestAccess() async -> Bool {
