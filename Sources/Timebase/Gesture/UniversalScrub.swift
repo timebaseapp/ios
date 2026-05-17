@@ -49,10 +49,12 @@ struct UniversalScrubContainer<Content: View>: UIViewControllerRepresentable {
             onDoubleTap()
         }
 
-        // Coexist with TabView's pan + scroll views. UIKit calls these on
-        // the main thread; let them be MainActor-isolated.
+        // Coexist with tap / long-press, but NOT with other pans — we want
+        // ours and TabView's to be mutually exclusive so vertical scrubbing
+        // never coincides with a page swipe.
         func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
-            true
+            if otherGestureRecognizer is UIPanGestureRecognizer { return false }
+            return true
         }
 
         // Don't intercept touches over UIControls so buttons still fire.
@@ -64,12 +66,12 @@ struct UniversalScrubContainer<Content: View>: UIViewControllerRepresentable {
 }
 
 final class ScrubHostingController<Content: View>: UIHostingController<Content> {
+    private var panRecognizer: VerticalPanRecognizer?
+
     @MainActor
     init(rootView: Content, coordinator: UniversalScrubContainer<Content>.Coordinator) {
         super.init(rootView: rootView)
         view.backgroundColor = .clear
-        // Allow the SwiftUI content to extend through the host's safe area.
-        // .ignoresSafeArea() on the content inside handles the rest.
         if #available(iOS 16.4, *) {
             self.safeAreaRegions = []
         }
@@ -79,6 +81,7 @@ final class ScrubHostingController<Content: View>: UIHostingController<Content> 
         pan.maximumNumberOfTouches = 1
         pan.cancelsTouchesInView = false
         view.addGestureRecognizer(pan)
+        self.panRecognizer = pan
 
         let dbl = UITapGestureRecognizer(target: coordinator, action: #selector(UniversalScrubContainer<Content>.Coordinator.doubleTap(_:)))
         dbl.numberOfTapsRequired = 2
@@ -89,6 +92,22 @@ final class ScrubHostingController<Content: View>: UIHostingController<Content> 
 
     @MainActor required dynamic init?(coder aDecoder: NSCoder) {
         fatalError("not implemented")
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        // Walk up to find TabView's internal UIScrollView and force its pan
+        // to wait for ours to fail. If ours succeeds (vertical scrub), its
+        // pan is cancelled → no accidental page switch mid-scrub.
+        guard let myPan = panRecognizer else { return }
+        var current: UIView? = view
+        while let v = current {
+            if let sv = v as? UIScrollView {
+                sv.panGestureRecognizer.require(toFail: myPan)
+                break
+            }
+            current = v.superview
+        }
     }
 }
 
