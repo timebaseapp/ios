@@ -53,6 +53,11 @@ struct UpNextScreen: View {
                     .padding(.horizontal, 16)
                     .padding(.bottom, 40)
                 }
+                .refreshable {
+                    // Real refresh — re-hits EventKit so events added in any
+                    // calendar source (work, personal, shared) show up.
+                    await store.refreshEvents()
+                }
             }
         }
         .sheet(isPresented: $showScheduler) {
