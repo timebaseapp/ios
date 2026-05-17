@@ -18,8 +18,8 @@ struct CityRow: View {
 
         HStack(alignment: .firstTextBaseline, spacing: 12) {
             Text(displayName)
-                .font(.custom("CrimsonText-SemiBold", size: 24))
-                .kerning(-0.2)
+                .font(.system(size: 22, weight: .regular))
+                .kerning(-0.1)
             Spacer(minLength: 8)
             timeAndDay(in: city.timeZoneObject, date: displayDate)
         }
@@ -28,40 +28,20 @@ struct CityRow: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(
             ZStack {
-                // Each row IS one flute — the vertical gradient (lighter top,
-                // deeper bottom) creates the single-flute curvature.
                 LinearGradient(colors: gradient, startPoint: .top, endPoint: .bottom)
-                // Paper grain
+                // Vertical fluted glass — soft cylindrical ribs drawn
+                // directly so the rib width is exact and the contrast doesn't
+                // get crushed by asset scaling.
+                FlutedGlassLayer()
+                    .allowsHitTesting(false)
+                // Paper grain (high-frequency noise underneath the glass)
                 Image("grain")
                     .resizable(resizingMode: .tile)
                     .blendMode(.softLight)
-                    .opacity(0.95)
-                    .allowsHitTesting(false)
-                Image("grain")
-                    .resizable(resizingMode: .tile)
-                    .blendMode(.overlay)
-                    .opacity(0.35)
+                    .opacity(0.90)
                     .allowsHitTesting(false)
             }
         )
-        .overlay(alignment: .top) {
-            // Top highlight rim — light catching the curved top of the flute
-            Rectangle()
-                .fill(LinearGradient(
-                    colors: [.white.opacity(0.18), .clear],
-                    startPoint: .top, endPoint: .bottom))
-                .frame(height: 8)
-                .allowsHitTesting(false)
-        }
-        .overlay(alignment: .bottom) {
-            // Bottom shadow rim — the curve receding
-            Rectangle()
-                .fill(LinearGradient(
-                    colors: [.clear, .black.opacity(0.16)],
-                    startPoint: .top, endPoint: .bottom))
-                .frame(height: 8)
-                .allowsHitTesting(false)
-        }
         .overlay(alignment: .top) {
             Rectangle()
                 .fill(.primary.opacity(0.06))

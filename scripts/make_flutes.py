@@ -11,9 +11,9 @@ from PIL import Image
 import math
 import os
 
-SIZE_W = 256
+SIZE_W = 480
 SIZE_H = 512   # tall so vertical tiling has no seam visibility
-RIB_W = 28     # px per rib — physical-glass-like at 24–32px
+RIB_W = 60     # px per rib — wider, more architectural-fluted-glass
 
 OUT_IOS = os.path.join(
     os.path.dirname(__file__),
@@ -28,15 +28,14 @@ def render():
     for x in range(SIZE_W):
         # Position within rib in [0, 1).
         t = (x % RIB_W) / RIB_W
-        # Smooth sine wave: highlight at left of rib, shadow at right.
-        # cos(0) = 1 (bright), cos(pi) = -1 (dark). Map to [-1, 1] then to
-        # mid-128 amplitude.
+        # Pure sine — smooth cylindrical lens. No power curve = the centers
+        # and edges of each rib transition gracefully (no banding).
         v = math.cos(t * 2 * math.pi)
-        # Soften the curve so the "rib edges" are sharper than the centers.
-        v = math.copysign(abs(v) ** 0.7, v)
-        intensity = int(128 + v * 60)
+        # Amplitude tuned for natural fluted glass — strong enough to read
+        # through blend modes at moderate opacity, soft enough not to feel
+        # like a barcode.
+        intensity = int(128 + v * 65)
         intensity = max(0, min(255, intensity))
-        # Apply the same intensity across the column for all rows
         for y in range(SIZE_H):
             px[x, y] = (intensity, intensity, intensity)
     return img
