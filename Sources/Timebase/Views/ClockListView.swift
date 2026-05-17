@@ -23,6 +23,16 @@ struct ClockListView: View {
             let topSafe = proxy.safeAreaInsets.top
             let botSafe = proxy.safeAreaInsets.bottom
             let cities = store.orderedCities
+            // Each row's natural breathing room above/below its content when
+            // perfectly centered. We only inset content beyond that — pushing
+            // it by the FULL safe area shoves it into the opposite border on
+            // short rows (e.g., 8 cities).
+            let rowHeight = proxy.size.height / max(CGFloat(cities.count), 1)
+            let estimatedContentHeight: CGFloat = 50
+            let naturalGap = max(0, (rowHeight - estimatedContentHeight) / 2)
+            let topInset = max(0, topSafe - naturalGap)
+            let botInset = max(0, botSafe - naturalGap)
+            let lastBotInset = botInset + (pillVisible ? pillReservedSpace : 0)
 
             ZStack(alignment: .bottom) {
                 UniversalScrubContainer(
@@ -33,10 +43,8 @@ struct ClockListView: View {
                             CityRow(
                                 city: city,
                                 rowCount: cities.count,
-                                topContentInset: isFirst ? topSafe : 0,
-                                bottomContentInset: isLast
-                                    ? (botSafe + (pillVisible ? pillReservedSpace : 0))
-                                    : 0
+                                topContentInset: isFirst ? topInset : 0,
+                                bottomContentInset: isLast ? lastBotInset : 0
                             )
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                             .onTapGesture { detailCity = city }
