@@ -36,7 +36,7 @@ struct MainPager: View {
     var body: some View {
         @Bindable var bindable = store
         TabView(selection: $bindable.currentTab) {
-            UpNextAboutScreen().tag(ScreenTab.upNextAbout)
+            UpNextScreen().tag(ScreenTab.upNextAbout)
             ClockListView().tag(ScreenTab.clock)
             SettingsScreen().tag(ScreenTab.settings)
         }

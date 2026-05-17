@@ -1,6 +1,18 @@
 import SwiftUI
 
-/// Shared traffic-light bar used at the top of side screens (Up Next/About,
+/// Lightweight header used at the top of side screens — small Crimson Text
+/// label that anchors the screen's identity.
+struct ScreenHeader: View {
+    let title: String
+    var body: some View {
+        Text(title)
+            .font(.custom("CrimsonText-SemiBold", size: 32))
+            .kerning(-0.2)
+            .frame(maxWidth: .infinity)
+    }
+}
+
+/// Shared traffic-light bar used at the top of side screens (Up Next,
 /// Settings). Red dismisses back to Clock; yellow + green are decorative
 /// homage to macOS.
 struct TrafficLightsBar: View {
@@ -69,6 +81,59 @@ struct BackgroundLayer: View {
                 .ignoresSafeArea()
                 .allowsHitTesting(false)
         }
+    }
+}
+
+/// Compact About footer — small wordmark, tagline, credit, links, version.
+/// Lives at the bottom of Settings as a quiet footnote.
+struct AboutFooter: View {
+    var body: some View {
+        VStack(spacing: 10) {
+            Rectangle()
+                .fill(.primary.opacity(0.10))
+                .frame(width: 60, height: 0.5)
+                .padding(.bottom, 4)
+
+            Text("Timebase")
+                .font(.custom("CrimsonText-SemiBold", size: 24))
+                .kerning(-0.2)
+                .foregroundStyle(.primary.opacity(0.85))
+
+            Text("A quieter way to think across timezones.")
+                .font(.custom("DepartureMono-Regular", size: 10))
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+
+            HStack(spacing: 6) {
+                Text("Crafted by").foregroundStyle(.secondary)
+                Link("@amrith", destination: URL(string: "https://x.com/amrith")!)
+                    .foregroundStyle(.primary.opacity(0.85))
+                    .underline()
+            }
+            .font(.custom("DepartureMono-Regular", size: 10))
+
+            HStack(spacing: 18) {
+                Link(destination: URL(string: "https://github.com/timebaseapp")!) {
+                    Image(systemName: "chevron.left.forwardslash.chevron.right")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(.secondary)
+                }
+                Link(destination: URL(string: "https://x.com/amrith")!) {
+                    Text("𝕏")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.top, 2)
+
+            Text("v1.0 · 2026")
+                .font(.custom("DepartureMono-Regular", size: 9))
+                .tracking(1.2)
+                .textCase(.uppercase)
+                .foregroundStyle(.tertiary)
+                .padding(.top, 4)
+        }
+        .frame(maxWidth: .infinity)
     }
 }
 

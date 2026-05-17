@@ -1,8 +1,11 @@
 import SwiftUI
 
-struct UpNextAboutScreen: View {
+/// Dedicated calendar countdown screen. Each event card is tinted by the
+/// time-of-day color at the **user's home timezone** when the event starts —
+/// so the cards feel like part of *your* day, regardless of where the meeting
+/// is scheduled.
+struct UpNextScreen: View {
     @Environment(TimebaseStore.self) private var store
-    @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         ZStack {
@@ -11,27 +14,24 @@ struct UpNextAboutScreen: View {
             VStack(spacing: 0) {
                 TrafficLightsBar()
 
+                ScreenHeader(title: "Up Next")
+                    .padding(.top, 2)
+                    .padding(.bottom, 18)
+
                 ScrollView {
-                    VStack(spacing: 0) {
+                    LazyVStack(spacing: 12) {
                         UpNextSection()
-                            .padding(.top, 8)
-                            .padding(.bottom, 32)
-
-                        Divider().padding(.horizontal, 28)
-
-                        AboutCard()
-                            .padding(.top, 24)
                     }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 40)
                 }
             }
         }
     }
 }
 
-// Up Next section: countdown cards stacked vertically or empty state.
 private struct UpNextSection: View {
     @Environment(TimebaseStore.self) private var store
-    @Environment(\.colorScheme) private var colorScheme
     @State private var tick = Date()
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
@@ -42,11 +42,8 @@ private struct UpNextSection: View {
             } else if store.upcomingEvents.isEmpty {
                 noEventsState
             } else {
-                LazyVStack(spacing: 0) {
-                    ForEach(store.upcomingEvents) { event in
-                        EventRow(event: event, now: tick)
-                        Divider().padding(.horizontal, 28)
-                    }
+                ForEach(store.upcomingEvents) { event in
+                    EventCard(event: event, now: tick)
                 }
             }
         }
@@ -70,51 +67,81 @@ private struct UpNextSection: View {
             .buttonStyle(SkeuomorphicPillButtonStyle())
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 40)
+        .padding(.vertical, 60)
     }
 
     private var noEventsState: some View {
         Text("Nothing on the calendar.")
             .font(.custom("DepartureMono-Regular", size: 14))
             .foregroundStyle(.secondary)
-            .padding(.vertical, 40)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 60)
     }
 }
 
-private struct EventRow: View {
+private struct EventCard: View {
     let event: UpcomingEvent
     let now: Date
+    @Environment(TimebaseStore.self) private var store
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         let secondsToStart = event.startDate.timeIntervalSince(now)
-        let hourAtEvent = fractionalHourAtEvent
-        let bg = Color(TimeColor.background(forHour: hourAtEvent, scheme: colorScheme).cgColor!)
-        let fg = TimeColor.foreground(forHour: hourAtEvent, scheme: colorScheme)
+        let hourAtHome = fractionalHourAtHome
+        let gradient = TimeColor.backgroundGradient(forHour: hourAtHome, scheme: colorScheme)
+        let fg = TimeColor.foreground(forHour: hourAtHome, scheme: colorScheme)
 
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 8) {
             Text(event.title)
-                .font(.system(size: 18, weight: .regular))
+                .font(.system(size: 17, weight: .regular))
+
             Text(TimebaseFormatters.relative(seconds: secondsToStart))
-                .font(.system(size: 36, weight: .heavy))
+                .font(.system(size: 38, weight: .heavy))
                 .monospacedDigit()
                 .kerning(-0.8)
+
             HStack(spacing: 0) {
-                Text(format(event.startDate, in: .current))
-                Text("  ·  ").foregroundStyle(fg.opacity(0.55))
-                Text(format(event.startDate, in: event.timezone))
+                Text(format(event.startDate, in: homeTimeZone))
+                if event.timezone != homeTimeZone {
+                    Text("  ·  ").foregroundStyle(fg.opacity(0.55))
+                    Text(format(event.startDate, in: event.timezone))
+                }
             }
-            .font(.system(size: 11))
+            .font(.custom("DepartureMono-Regular", size: 11))
         }
         .foregroundStyle(fg)
-        .padding(24)
+        .padding(22)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(bg)
+        .background(
+            ZStack {
+                LinearGradient(colors: gradient, startPoint: .top, endPoint: .bottom)
+                Image("grain")
+                    .resizable(resizingMode: .tile)
+                    .blendMode(.softLight)
+                    .opacity(0.95)
+                    .allowsHitTesting(false)
+                Image("grain")
+                    .resizable(resizingMode: .tile)
+                    .blendMode(.overlay)
+                    .opacity(0.35)
+                    .allowsHitTesting(false)
+            }
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(.primary.opacity(0.08), lineWidth: 0.5)
+        )
     }
 
-    private var fractionalHourAtEvent: Double {
+    private var homeTimeZone: TimeZone {
+        store.homeCity?.timeZoneObject ?? .current
+    }
+
+    /// Hour-of-day at *home* when the event starts.
+    private var fractionalHourAtHome: Double {
         var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = event.timezone
+        cal.timeZone = homeTimeZone
         let comps = cal.dateComponents([.hour, .minute], from: event.startDate)
         return Double(comps.hour ?? 0) + Double(comps.minute ?? 0) / 60
     }

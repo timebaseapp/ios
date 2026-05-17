@@ -14,14 +14,12 @@ struct SettingsScreen: View {
             VStack(spacing: 0) {
                 TrafficLightsBar()
 
+                ScreenHeader(title: "Settings")
+                    .padding(.top, 2)
+                    .padding(.bottom, 18)
+
                 ScrollView {
                     VStack(spacing: 26) {
-                        // Wordmark header — quieter than About screen
-                        Text("Settings")
-                            .font(.custom("CrimsonText-SemiBold", size: 32))
-                            .kerning(-0.2)
-                            .padding(.top, 4)
-
                         section(title: "CITIES") {
                             Button {
                                 showAddSheet = true
@@ -112,7 +110,10 @@ struct SettingsScreen: View {
                             }
                             .foregroundStyle(.red)
                         }
-                        .padding(.bottom, 32)
+
+                        AboutFooter()
+                            .padding(.top, 30)
+                            .padding(.bottom, 32)
                     }
                     .padding(.horizontal, 20)
                 }
