@@ -1,0 +1,4 @@
+app_identifier "cc.timebase.ios"
+apple_id ENV["APPLE_ID"] || "REDACTED@EXAMPLE.COM"
+team_id "VRNNS4H6XH"
+itc_team_id ENV["ASC_TEAM_ID"] # numeric — filled in after first run
