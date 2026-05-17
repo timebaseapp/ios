@@ -195,7 +195,16 @@ struct SchedulerSheet: View {
     /// the wheel/calendar in a popover. Two rows: date row, time row.
     private var whenSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            sectionHeader("WHEN")
+            HStack(spacing: 8) {
+                sectionHeader("WHEN")
+                if isWeekend {
+                    Text("· \(weekdayName) — heads up, it's the weekend")
+                        .font(.custom("DepartureMono-Regular", size: 10))
+                        .tracking(0.5)
+                        .foregroundStyle(.secondary)
+                        .italic()
+                }
+            }
             VStack(spacing: 0) {
                 DatePicker("Date",
                            selection: $meetingTime,
@@ -221,6 +230,19 @@ struct SchedulerSheet: View {
                     )
             )
         }
+    }
+
+    private var isWeekend: Bool {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = homeTimeZone
+        let weekday = cal.component(.weekday, from: meetingTime)
+        return weekday == 1 || weekday == 7   // Sunday=1, Saturday=7
+    }
+
+    private var weekdayName: String {
+        var fmt = Date.FormatStyle.dateTime.weekday(.wide)
+        fmt.timeZone = homeTimeZone
+        return fmt.format(meetingTime)
     }
 
     private var vibeSection: some View {
@@ -360,12 +382,14 @@ struct SchedulerSheet: View {
     private func vibe(for city: City) -> (label: String, color: Color, glyph: String) {
         let h = hour(for: city)
         switch h {
+        case 23, 0..<6:
+            return ("asleep", .gray, "🌙")
+        case 6..<9:
+            return ("waking up", .orange, "☕")
         case 9..<18:
             return ("working", .green, "☀")
-        case 7..<9, 18..<21:
-            return ("early/late", .orange, "⚠")
-        default:
-            return ("asleep", .gray, "🌙")
+        default:                       // 18 ..< 23
+            return ("winding down", .orange, "🌇")
         }
     }
 
