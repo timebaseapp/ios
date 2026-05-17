@@ -161,54 +161,50 @@ struct SettingsScreen: View {
     @State private var currentIcon = AppIconManager.currentName
 
     private var iconRow: some View {
-        HStack(spacing: 10) {
+        // 5 thumbnails — tighter spacing to fit on a 393pt-wide iPhone.
+        HStack(spacing: 6) {
             ForEach(Array(zip(AppIconManager.names, AppIconManager.labels)), id: \.0) { (name, label) in
                 Button {
                     AppIconManager.setIcon(name)
-                    // Optimistically reflect the selection — iOS only updates
-                    // alternateIconName after the user confirms the alert, so
-                    // tracking it locally keeps the UI feeling responsive.
                     currentIcon = name
                 } label: {
                     VStack(spacing: 6) {
                         ZStack {
-                            // Preview asset name mirrors the icon name —
-                            // `AppIcon-Morning` → `IconPreview-Morning`.
                             let previewName = name.replacingOccurrences(of: "AppIcon-", with: "IconPreview-")
                             if let img = UIImage(named: previewName) {
                                 Image(uiImage: img)
                                     .resizable()
                                     .interpolation(.high)
-                                    .frame(width: 56, height: 56)
-                                    .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+                                    .frame(width: 48, height: 48)
+                                    .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
                             } else {
-                                RoundedRectangle(cornerRadius: 13, style: .continuous)
+                                RoundedRectangle(cornerRadius: 11, style: .continuous)
                                     .fill(Color.gray.opacity(0.2))
-                                    .frame(width: 56, height: 56)
+                                    .frame(width: 48, height: 48)
                             }
-                            RoundedRectangle(cornerRadius: 13, style: .continuous)
+                            RoundedRectangle(cornerRadius: 11, style: .continuous)
                                 .stroke(.black.opacity(0.10), lineWidth: 0.5)
-                                .frame(width: 56, height: 56)
+                                .frame(width: 48, height: 48)
                             if currentIcon == name {
-                                RoundedRectangle(cornerRadius: 15, style: .continuous)
+                                RoundedRectangle(cornerRadius: 13, style: .continuous)
                                     .stroke(.primary, lineWidth: 2)
-                                    .frame(width: 62, height: 62)
+                                    .frame(width: 54, height: 54)
                             }
                         }
-                        .frame(width: 62, height: 62)
+                        .frame(width: 54, height: 54)
 
                         Text(label)
-                            .font(.system(size: 11))
+                            .font(.system(size: 10))
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
-                            .minimumScaleFactor(0.8)
+                            .minimumScaleFactor(0.7)
                     }
                 }
                 .buttonStyle(.plain)
                 .frame(maxWidth: .infinity)
             }
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 10)
         .padding(.vertical, 14)
     }
 

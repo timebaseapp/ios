@@ -29,6 +29,8 @@ WEB_SVG = os.path.join(os.path.dirname(__file__), "..", "..", "web/icon.svg")
 SIZE = 1024
 
 VARIANTS = {
+    # Default — full day in one gradient. Morning at top, Dusk at bottom.
+    "FullDay":     [(0xFA, 0xF0, 0xD0), (0xF8, 0xC7, 0x88), (0xD8, 0x92, 0x55), (0xA5, 0x50, 0x48)],
     "Morning":     [(0xFA, 0xF0, 0xD0), (0xF8, 0xE5, 0xBC), (0xF8, 0xD8, 0x9E)],
     "Midday":      [(0xF8, 0xE5, 0xBC), (0xF8, 0xC7, 0x88), (0xEC, 0xB0, 0x70)],
     "GoldenHour":  [(0xEC, 0xB0, 0x70), (0xD8, 0x92, 0x55), (0xC5, 0x6E, 0x48)],
@@ -46,12 +48,18 @@ def smoothstep(t):
 
 
 def color_at(stops, y_frac):
-    """3-stop interp: top → mid (0–0.5), mid → bottom (0.5–1.0), smoothstep eased."""
-    if y_frac <= 0.5:
-        t = smoothstep(y_frac / 0.5)
-        return lerp(stops[0], stops[1], t)
-    t = smoothstep((y_frac - 0.5) / 0.5)
-    return lerp(stops[1], stops[2], t)
+    """N-stop interp evenly spaced along [0, 1], smoothstep-eased per segment."""
+    n_segments = len(stops) - 1
+    if y_frac <= 0:
+        return stops[0]
+    if y_frac >= 1:
+        return stops[-1]
+    pos = y_frac * n_segments
+    idx = int(pos)
+    if idx >= n_segments:
+        idx = n_segments - 1
+    t = smoothstep(pos - idx)
+    return lerp(stops[idx], stops[idx + 1], t)
 
 
 def render_variant(stops, size: int) -> Image.Image:
@@ -129,9 +137,12 @@ def write_preview_imageset(preview_name: str, image: Image.Image):
 
 
 def write_svg(stops):
+    """Write SVG favicon with evenly-spaced N-stop gradient."""
+    n = len(stops)
+    pairs = [(i / (n - 1), c) for i, c in enumerate(stops)]
     s = "\n".join(
-        f'    <stop offset="{pct:.0%}" stop-color="#{c[0]:02X}{c[1]:02X}{c[2]:02X}"/>'
-        for pct, c in [(0.0, stops[0]), (0.5, stops[1]), (1.0, stops[2])]
+        f'    <stop offset="{pct:.2%}" stop-color="#{c[0]:02X}{c[1]:02X}{c[2]:02X}"/>'
+        for pct, c in pairs
     )
     svg = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
   <defs>
@@ -155,14 +166,14 @@ def main():
         write_imageset(f"AppIcon-{name}", img)
         write_preview_imageset(f"IconPreview-{name}", img)
 
-    # Primary AppIcon = Midday
-    write_imageset("AppIcon", images["Midday"])
+    # Primary AppIcon = FullDay (the consolidated day gradient)
+    write_imageset("AppIcon", images["FullDay"])
 
-    # Web favicon (SVG) + apple-touch-icon (PNG 512) — both use Midday.
-    write_svg(VARIANTS["Midday"])
-    midday = images["Midday"]
+    # Web favicon (SVG) + apple-touch-icon (PNG 512) — both use FullDay.
+    write_svg(VARIANTS["FullDay"])
+    full = images["FullDay"]
     touch_path = os.path.join(os.path.dirname(__file__), "..", "..", "web/apple-touch-icon.png")
-    midday.resize((512, 512), Image.LANCZOS).save(touch_path, "PNG", optimize=True)
+    full.resize((512, 512), Image.LANCZOS).save(touch_path, "PNG", optimize=True)
     print(f"wrote {touch_path}")
 
 
