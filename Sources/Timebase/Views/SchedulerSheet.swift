@@ -174,7 +174,9 @@ struct SchedulerSheet: View {
     private func participantRow(_ city: City) -> some View {
         HStack(spacing: 8) {
             if city.id == store.homeCityId {
-                Text("🏠").font(.system(size: 14))
+                Circle()
+                    .fill(Color.primary.opacity(0.55))
+                    .frame(width: 5, height: 5)
             }
             Text(city.name).font(.system(size: 15))
             Spacer()
@@ -396,6 +398,22 @@ struct SchedulerSheet: View {
     // MARK: - Defaults / continue
 
     private func setUpDefaults() {
+        #if DEBUG
+        if MarketingCapture.isActive {
+            if let pending = MarketingCapture.pendingSchedulerCityIds {
+                participantIds = pending
+            } else if let homeId = store.homeCityId {
+                participantIds = [homeId]
+            }
+            if let t = MarketingCapture.pendingSchedulerMeetingTime {
+                meetingTime = t
+            }
+            if let s = MarketingCapture.pendingSchedulerTitle {
+                title = s
+            }
+            return
+        }
+        #endif
         if participantIds.isEmpty, let homeId = store.homeCityId {
             participantIds = [homeId]
         }

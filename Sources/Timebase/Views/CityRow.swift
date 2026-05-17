@@ -10,10 +10,7 @@ struct CityRow: View {
     @EnvironmentObject private var weather: WeatherStore
     @Environment(\.colorScheme) private var colorScheme
 
-    private var displayName: String {
-        // 🏠 as a suffix so all names start at the same left edge.
-        city.id == store.homeCityId ? "\(city.name)  🏠" : city.name
-    }
+    private var isHome: Bool { city.id == store.homeCityId }
 
     private var nameFontSize: CGFloat {
         switch rowCount {
@@ -49,9 +46,18 @@ struct CityRow: View {
                 Color.clear.frame(height: topContentInset)
             }
             HStack(alignment: .firstTextBaseline, spacing: 12) {
-                Text(displayName)
+                Text(city.name)
                     .font(.system(size: nameFontSize, weight: .regular))
                     .kerning(-0.1)
+                if isHome {
+                    // Filled circle as home marker — always rasterizes
+                    // identically in capture + on-device renders, no font
+                    // fallback risk.
+                    Circle()
+                        .fill(Color.primary.opacity(0.55))
+                        .frame(width: nameFontSize * 0.28, height: nameFontSize * 0.28)
+                        .padding(.leading, -4)
+                }
                 Spacer(minLength: 8)
                 timeAndDay(in: city.timeZoneObject, date: displayDate)
             }

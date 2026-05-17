@@ -30,7 +30,9 @@
 		</dict>
 	</array>
 	<key>CFBundleVersion</key>
-	<string>2</string>
+	<string>1</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>NSCalendarsFullAccessUsageDescription</key>
 	<string>Timebase shows your upcoming events as live countdowns.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>

@@ -118,6 +118,15 @@ final class TimebaseStore {
         await refreshEvents()
     }
 
+    #if DEBUG
+    /// Loads the bundled city database without triggering EventKit or load().
+    /// Used by marketing capture mode which seeds state directly.
+    @MainActor
+    func cityDatabaseLoadIfNeeded() {
+        if cityDatabase.isEmpty { cityDatabase = City.loadBundled() }
+    }
+    #endif
+
     // MARK: - Mutations
 
     /// Cap on the world-clock list. Beyond this the rows get too short to
@@ -324,6 +333,74 @@ final class TimebaseStore {
         self.settings = snapshot.settings
         self.hasCompletedOnboarding = snapshot.hasCompletedOnboarding
     }
+
+    #if DEBUG
+    /// Diverse 8-city set used for marketing screenshots. Static so the
+    /// MarketingElementHarness can also see the same list for its widget
+    /// renders without round-tripping through the store.
+    static let marketingCitySeed: [(name: String, country: String, tz: String, lat: Double, lon: Double)] = [
+        ("San Francisco", "United States", "America/Los_Angeles", 37.7749, -122.4194),
+        ("New York", "United States", "America/New_York", 40.7128, -74.0060),
+        ("São Paulo", "Brazil", "America/Sao_Paulo", -23.5505, -46.6333),
+        ("London", "United Kingdom", "Europe/London", 51.5074, -0.1278),
+        ("Amsterdam", "Netherlands", "Europe/Amsterdam", 52.3676, 4.9041),
+        ("Bengaluru", "India", "Asia/Kolkata", 12.9716, 77.5946),
+        ("Singapore", "Singapore", "Asia/Singapore", 1.3521, 103.8198),
+        ("Sydney", "Australia", "Australia/Sydney", -33.8688, 151.2093)
+    ]
+
+    /// Force the store into a marketing-ready state: 8 diverse cities,
+    /// SF as home, fake calendar events, onboarding complete. Bypasses
+    /// EventKit + CloudKit entirely.
+    @MainActor
+    func seedMarketingState() {
+        let db = cityDatabase
+        let resolved: [City] = Self.marketingCitySeed.compactMap { seed in
+            db.first(where: { $0.name == seed.name && $0.timezone == seed.tz })
+        }
+        cities = resolved
+        homeCityId = resolved.first?.id // San Francisco
+        hasCompletedOnboarding = true
+        scrubOffsetMinutes = 0
+        upcomingEvents = mockMarketingEvents()
+        calendarAccessGranted = true
+        save()
+    }
+
+    private func mockMarketingEvents() -> [UpcomingEvent] {
+        let now = Date()
+        return [
+            UpcomingEvent.marketing(
+                id: "mkt-1",
+                title: "Standup with London",
+                startDate: now.addingTimeInterval(11 * 60),
+                endDate:   now.addingTimeInterval(40 * 60),
+                tz: TimeZone(identifier: "Europe/London") ?? .current
+            ),
+            UpcomingEvent.marketing(
+                id: "mkt-2",
+                title: "Design review",
+                startDate: now.addingTimeInterval(2 * 3600),
+                endDate:   now.addingTimeInterval(3 * 3600),
+                tz: .current
+            ),
+            UpcomingEvent.marketing(
+                id: "mkt-3",
+                title: "Dinner — Saakshi",
+                startDate: now.addingTimeInterval(7 * 3600),
+                endDate:   now.addingTimeInterval(9 * 3600),
+                tz: .current
+            ),
+            UpcomingEvent.marketing(
+                id: "mkt-4",
+                title: "Coffee with Mumbai team",
+                startDate: now.addingTimeInterval(22 * 3600),
+                endDate:   now.addingTimeInterval(23 * 3600),
+                tz: TimeZone(identifier: "Asia/Kolkata") ?? .current
+            )
+        ]
+    }
+    #endif
 
     func seedDefaultsIfEmpty(localTimezone: TimeZone = .current) {
         guard cities.isEmpty else { return }

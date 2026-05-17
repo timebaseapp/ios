@@ -20,6 +20,22 @@ struct UpcomingEvent: Identifiable, Hashable {
         self.calendarColor = event.calendar?.cgColor
     }
 
+    #if DEBUG
+    /// Direct construction for marketing capture (bypasses EventKit).
+    init(marketingId: String, title: String, startDate: Date, endDate: Date, timezone: TimeZone) {
+        self.id = marketingId
+        self.title = title
+        self.startDate = startDate
+        self.endDate = endDate
+        self.timezone = timezone
+        self.location = nil
+        self.calendarColor = nil
+    }
+    static func marketing(id: String, title: String, startDate: Date, endDate: Date, tz: TimeZone) -> UpcomingEvent {
+        UpcomingEvent(marketingId: id, title: title, startDate: startDate, endDate: endDate, timezone: tz)
+    }
+    #endif
+
     static func == (lhs: UpcomingEvent, rhs: UpcomingEvent) -> Bool {
         lhs.id == rhs.id && lhs.startDate == rhs.startDate
     }

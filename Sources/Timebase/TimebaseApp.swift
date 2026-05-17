@@ -15,6 +15,12 @@ struct TimebaseApp: App {
                 .environmentObject(weather)
                 .preferredColorScheme(store.settings.appearance.preferred)
                 .task {
+                    #if DEBUG
+                    if MarketingCapture.isActive {
+                        await runMarketingCapture()
+                        return
+                    }
+                    #endif
                     await store.bootstrap()
                     autoRotateIfNeeded()
                     Greeting.updateDynamicShortcut()
@@ -52,6 +58,21 @@ struct TimebaseApp: App {
             store.pendingShowScheduler = true
         }
     }
+
+    #if DEBUG
+    @MainActor
+    private func runMarketingCapture() async {
+        // Bypass the normal bootstrap — load DB then seed marketing state.
+        store.cityDatabaseLoadIfNeeded()
+        store.seedMarketingState()
+        // Let SwiftUI lay out the seeded root view before we start snapping.
+        try? await Task.sleep(for: .milliseconds(1200))
+        let steps = TimebaseCaptureSteps.make(store: store)
+        await MarketingCaptureCoordinator.shared.run(steps: steps) {
+            MarketingElementHarness.renderAllWidgets()
+        }
+    }
+    #endif
 
     @MainActor
     private func autoRotateIfNeeded() {
