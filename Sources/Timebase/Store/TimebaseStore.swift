@@ -250,6 +250,7 @@ final class TimebaseStore {
         guard calendarService.hasAccess else { return }
         upcomingEvents = await calendarService.upcomingEvents()
         calendarAccessGranted = true
+        await EventCountdownActivityManager.sync(store: self)
     }
 
     // MARK: - Persistence

@@ -54,6 +54,8 @@ targets:
           - UIApplicationShortcutItemType: cc.timebase.shortcut.settings
             UIApplicationShortcutItemTitle: Settings
             UIApplicationShortcutItemIconType: UIApplicationShortcutIconTypeFavorite
+    dependencies:
+      - target: TimebaseWidgets
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: cc.timebase.ios
@@ -77,6 +79,31 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: cc.timebase.ios.tests
         SWIFT_VERSION: "6.0"
+
+  TimebaseWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - TimebaseWidgets
+      - path: Sources/Timebase/LiveActivity/EventCountdownAttributes.swift
+    info:
+      path: TimebaseWidgets/Info.plist
+      properties:
+        CFBundleDisplayName: Timebase Widgets
+        CFBundleShortVersionString: "1.0.0"
+        CFBundleVersion: "1"
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: cc.timebase.ios.widgets
+        SWIFT_VERSION: "6.0"
+        INFOPLIST_FILE: TimebaseWidgets/Info.plist
+        CODE_SIGN_ENTITLEMENTS: TimebaseWidgets/TimebaseWidgets.entitlements
+        TARGETED_DEVICE_FAMILY: "1"
+        IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+        DEVELOPMENT_TEAM: VRNNS4H6XH
+        SKIP_INSTALL: "NO"
 
 schemes:
   Timebase:
