@@ -172,7 +172,10 @@ struct SettingsScreen: View {
                 } label: {
                     VStack(spacing: 6) {
                         ZStack {
-                            if let img = UIImage(named: name) {
+                            // Preview asset name mirrors the icon name —
+                            // `AppIcon-Morning` → `IconPreview-Morning`.
+                            let previewName = name.replacingOccurrences(of: "AppIcon-", with: "IconPreview-")
+                            if let img = UIImage(named: previewName) {
                                 Image(uiImage: img)
                                     .resizable()
                                     .interpolation(.high)

@@ -115,6 +115,27 @@ def write_imageset(name: str, image: Image.Image):
     print(f"wrote {folder}/icon-1024.png")
 
 
+def write_preview_imageset(preview_name: str, image: Image.Image):
+    """Mirror the icon as a regular Image asset for in-app preview rendering.
+    Alternate app-icon sets aren't accessible via UIImage(named:) — those are
+    reserved for the system — so we keep a parallel set for the Settings UI."""
+    folder = os.path.join(ASSETS_DIR, f"{preview_name}.imageset")
+    os.makedirs(folder, exist_ok=True)
+    # Downscale to 256 for the preview to keep bundle size sane.
+    preview = image.resize((256, 256), Image.LANCZOS)
+    preview.save(os.path.join(folder, f"{preview_name}.png"), "PNG", optimize=True)
+    contents = f'''{{
+  "images" : [
+    {{ "filename" : "{preview_name}.png", "idiom" : "universal" }}
+  ],
+  "info" : {{ "author" : "xcode", "version" : 1 }}
+}}
+'''
+    with open(os.path.join(folder, "Contents.json"), "w") as f:
+        f.write(contents)
+    print(f"wrote {folder}/{preview_name}.png")
+
+
 def write_svg(stops):
     s = "\n".join(
         f'    <stop offset="{pct:.0%}" stop-color="#{c[0]:02X}{c[1]:02X}{c[2]:02X}"/>'
@@ -140,6 +161,7 @@ def main():
         img = render_variant(stops, SIZE)
         images[name] = img
         write_imageset(f"AppIcon-{name}", img)
+        write_preview_imageset(f"IconPreview-{name}", img)
 
     # Primary AppIcon = Midday
     write_imageset("AppIcon", images["Midday"])
