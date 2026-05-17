@@ -13,7 +13,7 @@ struct SchedulerSheet: View {
     @State private var scrubMinutesOfDay: Int = 9 * 60   // default 9:00 home time
     @State private var participantIds: [String] = []
     @State private var durationMinutes: Int = 30
-    @State private var showAddCity = false
+    @State private var showPicker = false
     @State private var draftEvent: EKEvent?
     @State private var initialScrub: Int = 0
 
@@ -31,8 +31,15 @@ struct SchedulerSheet: View {
             }
         }
         .onAppear { setUpDefaults() }
-        .sheet(isPresented: $showAddCity) {
-            AddCitySheet()
+        .sheet(isPresented: $showPicker) {
+            ParticipantPickerSheet(
+                excludedIds: Set(participantIds),
+                onPick: { city in
+                    if !participantIds.contains(city.id) {
+                        participantIds.append(city.id)
+                    }
+                }
+            )
         }
         .sheet(item: $draftEvent) { event in
             EventEditViewControllerRepresentable(
@@ -54,48 +61,28 @@ struct SchedulerSheet: View {
     // MARK: - Header
 
     private var header: some View {
-        HStack(spacing: 8) {
-            // Red traffic light to dismiss
-            Button {
-                Haptics.buttonPressed()
-                dismiss()
-            } label: {
-                Circle()
-                    .fill(Color(red: 1.0, green: 0.373, blue: 0.341))
-                    .overlay(Circle().stroke(.black.opacity(0.18), lineWidth: 0.5))
-                    .frame(width: 13, height: 13)
-            }
-            .buttonStyle(.plain)
-
-            Circle()
-                .fill(Color(red: 1.0, green: 0.741, blue: 0.180))
-                .overlay(Circle().stroke(.black.opacity(0.18), lineWidth: 0.5))
-                .frame(width: 13, height: 13)
-            Circle()
-                .fill(Color(red: 0.157, green: 0.788, blue: 0.251))
-                .overlay(Circle().stroke(.black.opacity(0.18), lineWidth: 0.5))
-                .frame(width: 13, height: 13)
-
-            Spacer()
-
+        // No traffic lights — sheet has native drag-to-dismiss + drag indicator.
+        // Just the title centered with a Continue confirmation button on the right.
+        ZStack {
             Text("Plan a meeting")
-                .font(.custom("CrimsonText-SemiBold", size: 20))
+                .font(.custom("CrimsonText-SemiBold", size: 22))
 
-            Spacer()
-
-            Button {
-                Haptics.buttonPressed()
-                openInCalendar()
-            } label: {
-                Text("Continue")
-                    .font(.system(size: 14, weight: .semibold))
+            HStack {
+                Spacer()
+                Button {
+                    Haptics.buttonPressed()
+                    openInCalendar()
+                } label: {
+                    Text("Continue")
+                        .font(.system(size: 15, weight: .semibold))
+                }
+                .disabled(title.isEmpty || participants.isEmpty)
+                .opacity((title.isEmpty || participants.isEmpty) ? 0.4 : 1)
             }
-            .disabled(title.isEmpty || participants.isEmpty)
-            .opacity((title.isEmpty || participants.isEmpty) ? 0.4 : 1)
+            .padding(.trailing, 18)
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 14)
-        .padding(.bottom, 8)
+        .padding(.top, 28)
+        .padding(.bottom, 20)
     }
 
     // MARK: - Content
@@ -125,7 +112,7 @@ struct SchedulerSheet: View {
                 .padding(.bottom, 40)
             }
             .padding(.horizontal, 20)
-            .padding(.top, 12)
+            .padding(.top, 4)
         }
     }
 
@@ -152,7 +139,7 @@ struct SchedulerSheet: View {
                     participantRow(city)
                 }
                 Button {
-                    showAddCity = true
+                    showPicker = true
                 } label: {
                     HStack {
                         Image(systemName: "plus")
@@ -207,7 +194,6 @@ struct SchedulerSheet: View {
                     .frame(height: 44)
                 Divider().padding(.horizontal, 14)
                 timeScrubber
-                    .frame(height: 60)
             }
             .background(
                 RoundedRectangle(cornerRadius: 12)
@@ -220,36 +206,65 @@ struct SchedulerSheet: View {
         }
     }
 
-    /// A vertical drag scrubber for the meeting time. Drag UP = later, DOWN
-    /// = earlier. Snaps to 15-minute increments.
+    /// Scrubbable time control. Big tappable area with up/down chevrons on
+    /// the side as discoverability hints. Vertical drag scrubs in 15-min
+    /// snaps. Single-tap on either chevron nudges 15 min.
     private var timeScrubber: some View {
-        HStack {
+        HStack(spacing: 14) {
             Text("Time")
                 .font(.system(size: 15))
             Spacer()
+
+            // Down chevron — earlier
+            Button {
+                bumpTime(by: -15)
+            } label: {
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 30, height: 36)
+            }
+            .buttonStyle(.plain)
+
             Text(timeString)
-                .font(.system(size: 22, weight: .heavy))
+                .font(.system(size: 20, weight: .medium))
                 .monospacedDigit()
+                .frame(minWidth: 100)
+                .padding(.horizontal, 4)
+                .contentShape(Rectangle())
+                .gesture(scrubGesture)
+
+            // Up chevron — later
+            Button {
+                bumpTime(by: 15)
+            } label: {
+                Image(systemName: "chevron.up")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 30, height: 36)
+            }
+            .buttonStyle(.plain)
         }
         .padding(.horizontal, 14)
-        .contentShape(Rectangle())
-        .gesture(
-            DragGesture(minimumDistance: 4)
-                .onChanged { value in
-                    let dy = value.translation.height
-                    // Lazy-capture initial when drag begins
-                    if value.translation == .zero { return }
-                    if initialScrub == 0 { initialScrub = scrubMinutesOfDay }
-                    // 4pt per minute scrub feel
-                    let deltaMin = Int(-dy / 4)
-                    let raw = initialScrub + deltaMin
-                    let snapped = ((raw + 7) / 15) * 15   // snap to nearest 15
-                    scrubMinutesOfDay = max(0, min(24 * 60 - 1, snapped))
-                }
-                .onEnded { _ in
-                    initialScrub = 0
-                }
-        )
+        .frame(height: 56)
+    }
+
+    private var scrubGesture: some Gesture {
+        DragGesture(minimumDistance: 4)
+            .onChanged { value in
+                if initialScrub == 0 { initialScrub = scrubMinutesOfDay }
+                let deltaMin = Int(-value.translation.height / 4)
+                let raw = initialScrub + deltaMin
+                let snapped = ((raw + 7) / 15) * 15
+                scrubMinutesOfDay = max(0, min(24 * 60 - 1, snapped))
+            }
+            .onEnded { _ in initialScrub = 0 }
+    }
+
+    private func bumpTime(by minutes: Int) {
+        Haptics.buttonPressed()
+        let raw = scrubMinutesOfDay + minutes
+        scrubMinutesOfDay = max(0, min(24 * 60 - 1, ((raw + 7) / 15) * 15))
     }
 
     private var timeString: String {
@@ -264,15 +279,19 @@ struct SchedulerSheet: View {
         VStack(alignment: .leading, spacing: 8) {
             sectionHeader("FOR EVERYONE")
             VStack(spacing: 0) {
-                ForEach(participants) { city in
-                    vibeRow(city)
-                }
                 if participants.isEmpty {
-                    Text("Add participants to see the vibe")
-                        .font(.system(size: 13))
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 14)
-                        .frame(height: 44)
+                    HStack {
+                        Text("Add a participant to see the vibe")
+                            .font(.system(size: 15))
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                    }
+                    .padding(.horizontal, 14)
+                    .frame(height: 44)
+                } else {
+                    ForEach(participants) { city in
+                        vibeRow(city)
+                    }
                 }
             }
             .background(
@@ -295,7 +314,7 @@ struct SchedulerSheet: View {
             Text(city.name).font(.system(size: 15))
             Spacer()
             Text(String(format: "%d:00 %@", h12, suffix))
-                .font(.system(size: 14, weight: .semibold))
+                .font(.system(size: 14))
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
             Text(glyph)
@@ -368,7 +387,10 @@ struct SchedulerSheet: View {
     // MARK: - Vibe + helpers
 
     private var participants: [City] {
-        participantIds.compactMap { id in store.cities.first(where: { $0.id == id }) }
+        participantIds.compactMap { id in
+            store.cities.first(where: { $0.id == id }) ??
+            store.cityDatabase.first(where: { $0.id == id })
+        }
     }
 
     /// City hour for the chosen meeting time (in home tz, projected to city tz).
@@ -397,14 +419,12 @@ struct SchedulerSheet: View {
     // MARK: - Defaults / continue
 
     private func setUpDefaults() {
-        if participantIds.isEmpty {
-            participantIds = store.orderedCities.map { $0.id }
+        if participantIds.isEmpty, let homeId = store.homeCityId {
+            participantIds = [homeId]
         }
     }
 
     private func openInCalendar() {
-        // Build the absolute meeting start by combining `date` (the day) with
-        // `scrubMinutesOfDay` interpreted in the user's home timezone.
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = store.homeCity?.timeZoneObject ?? .current
         var comps = cal.dateComponents([.year, .month, .day], from: date)
