@@ -61,7 +61,6 @@ private struct OnboardingBackdrop: View {
     private let cycleDuration: TimeInterval = 14
 
     var body: some View {
-        let bg = Color(TimeColor.background(forHour: phase, scheme: scheme).cgColor!)
         ZStack {
             LinearGradient(
                 colors: [

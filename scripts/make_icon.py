@@ -75,29 +75,13 @@ def render_icon(size: int) -> Image.Image:
             n = int(random.gauss(0, 18))
             gp[x, y] = max(0, min(255, 128 + n))
 
-    # Fluted glass — vertical ribs scaled up to icon size. The icon is 1024;
-    # we want roughly 20 ribs across so each rib is ~50px wide at 1024 — but
-    # we'll scale a 28px rib pattern by ~1.8 to get visually rich ribs at icon
-    # resolution.
-    RIB_W_ICON = 56
-    fl = Image.new("L", (size, size), 0)
-    flp = fl.load()
-    for x in range(size):
-        t = (x % RIB_W_ICON) / RIB_W_ICON
-        v = math.cos(t * 2 * math.pi)
-        v = math.copysign(abs(v) ** 0.7, v)
-        intensity = int(128 + v * 60)
-        intensity = max(0, min(255, intensity))
-        for y in range(size):
-            flp[x, y] = intensity
-
-    # Composite grain + flutes via 'overlay' blend.
-    # Grain at ~25%, flutes at ~28% — flutes dominate, grain adds tactile noise.
+    # Composite grain via 'overlay' blend at ~30% strength.
+    # The horizontal palette bands themselves ARE the flutes — no vertical
+    # rib overlay (those went the wrong way).
     out = Image.new("RGB", (size, size))
     op = out.load()
     ip = img.load()
     gp = grain.load()
-    flp = fl.load()
 
     def overlay(cf, n):
         if n < 0.5:
@@ -108,14 +92,11 @@ def render_icon(size: int) -> Image.Image:
         for x in range(size):
             r, g, b = ip[x, y]
             ng = gp[x, y] / 255.0
-            nf = flp[x, y] / 255.0
             def blend(c):
                 cf = c / 255.0
-                v1 = overlay(cf, ng)
-                cf2 = cf * 0.75 + v1 * 0.25      # grain mix
-                v2 = overlay(cf2, nf)
-                cf3 = cf2 * 0.72 + v2 * 0.28     # flutes mix
-                return int(max(0, min(255, cf3 * 255)))
+                v = overlay(cf, ng)
+                cf2 = cf * 0.72 + v * 0.28
+                return int(max(0, min(255, cf2 * 255)))
             op[x, y] = (blend(r), blend(g), blend(b))
 
     return out

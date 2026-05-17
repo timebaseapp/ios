@@ -61,14 +61,6 @@ struct BackgroundLayer: View {
                 : Color(red: 0.973, green: 0.965, blue: 0.949))
                 .ignoresSafeArea()
 
-            // Flutes — vertical glass ribs
-            Image("flutes")
-                .resizable(resizingMode: .tile)
-                .blendMode(.overlay)
-                .opacity(0.18)
-                .ignoresSafeArea()
-                .allowsHitTesting(false)
-
             // Paper grain
             Image("grain")
                 .resizable(resizingMode: .tile)

@@ -40,8 +40,7 @@ struct MainPager: View {
             ClockListView().tag(ScreenTab.clock)
             SettingsScreen().tag(ScreenTab.settings)
         }
-        .tabViewStyle(.page(indexDisplayMode: .always))
-        .indexViewStyle(.page(backgroundDisplayMode: .interactive))
+        .tabViewStyle(.page(indexDisplayMode: .never))
         .ignoresSafeArea(edges: .top)
         .onAppear { Haptics.prepare() }
     }

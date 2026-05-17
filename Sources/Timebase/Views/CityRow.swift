@@ -18,8 +18,8 @@ struct CityRow: View {
 
         HStack(alignment: .firstTextBaseline, spacing: 12) {
             Text(displayName)
-                .font(.system(size: 22, weight: .regular))
-                .kerning(-0.1)
+                .font(.custom("CrimsonText-SemiBold", size: 24))
+                .kerning(-0.2)
             Spacer(minLength: 8)
             timeAndDay(in: city.timeZoneObject, date: displayDate)
         }
@@ -28,14 +28,10 @@ struct CityRow: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(
             ZStack {
+                // Each row IS one flute — the vertical gradient (lighter top,
+                // deeper bottom) creates the single-flute curvature.
                 LinearGradient(colors: gradient, startPoint: .top, endPoint: .bottom)
-                // Fluted glass — low-frequency vertical ribs
-                Image("flutes")
-                    .resizable(resizingMode: .tile)
-                    .blendMode(.overlay)
-                    .opacity(0.20)
-                    .allowsHitTesting(false)
-                // Paper grain — high-frequency noise
+                // Paper grain
                 Image("grain")
                     .resizable(resizingMode: .tile)
                     .blendMode(.softLight)
@@ -48,6 +44,24 @@ struct CityRow: View {
                     .allowsHitTesting(false)
             }
         )
+        .overlay(alignment: .top) {
+            // Top highlight rim — light catching the curved top of the flute
+            Rectangle()
+                .fill(LinearGradient(
+                    colors: [.white.opacity(0.18), .clear],
+                    startPoint: .top, endPoint: .bottom))
+                .frame(height: 8)
+                .allowsHitTesting(false)
+        }
+        .overlay(alignment: .bottom) {
+            // Bottom shadow rim — the curve receding
+            Rectangle()
+                .fill(LinearGradient(
+                    colors: [.clear, .black.opacity(0.16)],
+                    startPoint: .top, endPoint: .bottom))
+                .frame(height: 8)
+                .allowsHitTesting(false)
+        }
         .overlay(alignment: .top) {
             Rectangle()
                 .fill(.primary.opacity(0.06))
