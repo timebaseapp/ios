@@ -65,53 +65,38 @@ struct SettingsScreen: View {
                         }
 
                         section(title: "PREFERENCES") {
-                            HStack {
-                                Text("24-hour time")
-                                    .font(.system(size: 16))
-                                Spacer()
-                                Picker("", selection: $bindable.settings.hourPreference) {
-                                    Text("System").tag(HourPreference.system)
-                                    Text("On").tag(HourPreference.on)
-                                    Text("Off").tag(HourPreference.off)
-                                }
-                                .labelsHidden()
-                                .pickerStyle(.menu)
+                            preferenceRow("24-hour time") {
+                                inlineMenu(
+                                    label: hourLabel(bindable.wrappedValue.settings.hourPreference),
+                                    options: HourPreference.allCases.map { ($0, hourLabel($0)) },
+                                    isSelected: { $0 == bindable.wrappedValue.settings.hourPreference },
+                                    onPick: { bindable.wrappedValue.settings.hourPreference = $0 }
+                                )
                             }
-                            .padding(.horizontal, 16)
-                            .frame(height: 44)
-
-                            HStack {
-                                Text("Theme")
-                                    .font(.system(size: 16))
-                                Spacer()
-                                Picker("", selection: $bindable.settings.appearance) {
-                                    Text("System").tag(Appearance.system)
-                                    Text("Light").tag(Appearance.light)
-                                    Text("Dark").tag(Appearance.dark)
-                                }
-                                .labelsHidden()
-                                .pickerStyle(.menu)
+                            preferenceRow("Theme") {
+                                inlineMenu(
+                                    label: appearanceLabel(bindable.wrappedValue.settings.appearance),
+                                    options: Appearance.allCases.map { ($0, appearanceLabel($0)) },
+                                    isSelected: { $0 == bindable.wrappedValue.settings.appearance },
+                                    onPick: { bindable.wrappedValue.settings.appearance = $0 }
+                                )
                             }
-                            .padding(.horizontal, 16)
-                            .frame(height: 44)
-
-                            HStack {
-                                Text("Calendar")
-                                    .font(.system(size: 16))
-                                Spacer()
+                            preferenceRow("Calendar") {
                                 if store.calendarAccessGranted {
                                     Text("Connected")
-                                        .font(.system(size: 14))
+                                        .font(.system(size: 16))
                                         .foregroundStyle(.secondary)
                                 } else {
-                                    Button("Connect") {
+                                    Button {
                                         Task { await store.requestCalendarAccess() }
+                                    } label: {
+                                        Text("Connect")
+                                            .font(.system(size: 16))
+                                            .foregroundStyle(.secondary)
                                     }
-                                    .font(.system(size: 14))
+                                    .buttonStyle(.plain)
                                 }
                             }
-                            .padding(.horizontal, 16)
-                            .frame(height: 44)
                         }
 
                         section(title: "APP ICON") {
@@ -253,6 +238,70 @@ struct SettingsScreen: View {
 
     private var nonHomeCities: [City] {
         store.orderedCities.filter { $0.id != store.homeCityId }
+    }
+
+    /// Standard preference row: left-aligned 16pt label + right-aligned value
+    /// content that callers supply. Keeps row height + padding identical
+    /// across rows so typography reads as a single system.
+    @ViewBuilder
+    private func preferenceRow<Value: View>(_ label: String, @ViewBuilder value: () -> Value) -> some View {
+        HStack {
+            Text(label)
+                .font(.system(size: 16))
+            Spacer()
+            value()
+        }
+        .padding(.horizontal, 16)
+        .frame(height: 44)
+    }
+
+    /// Custom Menu that renders its current value in the same SF Pro 16pt
+    /// secondary-muted style as the rest of the settings text — instead of
+    /// Picker(.menu)'s default tinted-blue larger font.
+    @ViewBuilder
+    private func inlineMenu<T: Hashable>(
+        label: String,
+        options: [(T, String)],
+        isSelected: @escaping (T) -> Bool,
+        onPick: @escaping (T) -> Void
+    ) -> some View {
+        Menu {
+            ForEach(Array(options.enumerated()), id: \.offset) { _, pair in
+                Button {
+                    onPick(pair.0)
+                } label: {
+                    if isSelected(pair.0) {
+                        Label(pair.1, systemImage: "checkmark")
+                    } else {
+                        Text(pair.1)
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Text(label)
+                    .font(.system(size: 16))
+                    .foregroundStyle(.secondary)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(.tertiary)
+            }
+        }
+    }
+
+    private func hourLabel(_ value: HourPreference) -> String {
+        switch value {
+        case .system: return "System"
+        case .on:     return "On"
+        case .off:    return "Off"
+        }
+    }
+    private func appearanceLabel(_ value: Appearance) -> String {
+        switch value {
+        case .system: return "System"
+        case .light:  return "Light"
+        case .dark:   return "Dark"
+        }
     }
 
     @ViewBuilder
