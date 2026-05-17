@@ -112,12 +112,13 @@ end
 # Bump build number, archive Release, upload to TestFlight.
 #-------------------------------------------------------------------------------
 lane :beta do
-  asc_api_key
+  api_key = asc_api_key
 
   ensure_clean_xcode_project
 
   # Bump build number based on TestFlight's latest, +1
   latest = latest_testflight_build_number(
+    api_key: api_key,
     app_identifier: APP_ID,
     initial_build_number: 0
   )
@@ -132,6 +133,7 @@ lane :beta do
   )
 
   upload_to_testflight(
+    api_key: api_key,
     skip_waiting_for_build_processing: true,
     skip_submission: true,
     apple_id: nil,
@@ -149,13 +151,13 @@ end
 # Run `bundle exec fastlane release version:1.0.1` to bump first.
 #-------------------------------------------------------------------------------
 lane :release do |options|
-  asc_api_key
+  api_key = asc_api_key
 
   if options[:version]
     increment_version_number(version_number: options[:version], xcodeproj: "Timebase.xcodeproj")
   end
 
-  latest = latest_testflight_build_number(app_identifier: APP_ID, initial_build_number: 0)
+  latest = latest_testflight_build_number(api_key: api_key, app_identifier: APP_ID, initial_build_number: 0)
   increment_build_number(build_number: latest + 1, xcodeproj: "Timebase.xcodeproj")
 
   build_app(
@@ -167,6 +169,7 @@ lane :release do |options|
   )
 
   upload_to_app_store(
+    api_key: api_key,
     skip_screenshots: true,
     skip_metadata: false,
     submit_for_review: true,
