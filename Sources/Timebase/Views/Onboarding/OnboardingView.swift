@@ -70,11 +70,6 @@ private struct OnboardingBackdrop: View {
                 startPoint: .top, endPoint: .bottom
             )
 
-            Image("flutes")
-                .resizable(resizingMode: .tile)
-                .blendMode(.overlay)
-                .opacity(0.18)
-
             Image("grain")
                 .resizable(resizingMode: .tile)
                 .blendMode(.softLight)

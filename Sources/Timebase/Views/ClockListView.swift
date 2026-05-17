@@ -12,22 +12,29 @@ struct ClockListView: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            VStack(spacing: 0) {
-                ForEach(store.orderedCities) { city in
-                    CityRow(city: city)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .onTapGesture { detailCity = city }
-                        .contextMenu {
-                            if city.id != store.homeCityId {
-                                Button("Make home") { store.makeHome(cityId: city.id) }
-                                Button("Remove", role: .destructive) { store.remove(cityId: city.id) }
+            UniversalScrubContainer(
+                content: VStack(spacing: 0) {
+                    ForEach(store.orderedCities) { city in
+                        CityRow(city: city)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .onTapGesture { detailCity = city }
+                            .contextMenu {
+                                if city.id != store.homeCityId {
+                                    Button("Make home") { store.makeHome(cityId: city.id) }
+                                    Button("Remove", role: .destructive) { store.remove(cityId: city.id) }
+                                }
+                                Button("Details") { detailCity = city }
                             }
-                            Button("Details") { detailCity = city }
-                        }
-                }
-            }
+                    }
+                },
+                onVerticalPan: { dy in
+                    // dy > 0 = drag down (rewind), dy < 0 = drag up (advance)
+                    store.scrubOffsetMinutes += Double(-dy) / scrubPixelsPerMinute
+                    ScrubHaptics.update(store: store)
+                },
+                onDoubleTap: { store.snapToNow() }
+            )
             .ignoresSafeArea()
-            .universalScrub()
 
             // Scrub-delta pill — appears while scrubbed, auto-fades ~2s after
             // user stops scrubbing so it stops overlapping row content.
