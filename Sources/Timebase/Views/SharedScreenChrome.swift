@@ -61,8 +61,8 @@ private struct TrafficLight: View {
     }
 }
 
-/// Shared backdrop: app's near-neutral surface + paper grain + fluted glass
-/// (subtle), matching the rest of the visual system.
+/// Shared backdrop: app's near-neutral surface + paper grain, matching the
+/// rest of the visual system.
 struct BackgroundLayer: View {
     @Environment(\.colorScheme) private var scheme
 

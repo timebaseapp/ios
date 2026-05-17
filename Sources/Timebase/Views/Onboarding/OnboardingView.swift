@@ -52,8 +52,8 @@ struct OnboardingView: View {
 
 // MARK: - Backdrop
 
-/// Slowly cycling palette gradient + grain + flutes. The colors drift through
-/// the 24h palette so the screen feels alive without being noisy.
+/// Slowly cycling palette gradient + grain. The colors drift through the
+/// 24h palette so the screen feels alive without being noisy.
 private struct OnboardingBackdrop: View {
     @Environment(\.colorScheme) private var scheme
     @State private var phase: Double = 6  // start at morning-ish

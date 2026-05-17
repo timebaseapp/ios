@@ -2,8 +2,8 @@
 """
 Generates four time-of-day variants of the Timebase app icon, plus a matching
 web favicon. Each variant is a pure 3-stop vertical gradient through a
-different warm slice of the palette, composited with paper grain. No flutes.
-No night colors.
+different warm slice of the palette, composited with paper grain. No night
+colors.
 
 Outputs (PNG, 1024×1024):
   AppIcon-Morning.appiconset/icon-1024.png
@@ -16,7 +16,6 @@ Plus:
   web/icon.svg  (Midday)
 """
 from PIL import Image
-import math
 import os
 import random
 
@@ -60,13 +59,6 @@ def render_variant(stops, size: int) -> Image.Image:
     px = img.load()
     for y in range(size):
         c = color_at(stops, y / (size - 1))
-        # Subtle in-band wobble for a painted feel (kept very gentle).
-        shade = 1.0 - 0.03 * math.sin(y / size * math.pi * 14)
-        c = (
-            max(0, min(255, int(c[0] * shade))),
-            max(0, min(255, int(c[1] * shade))),
-            max(0, min(255, int(c[2] * shade))),
-        )
         for x in range(size):
             px[x, y] = c
 
@@ -166,8 +158,12 @@ def main():
     # Primary AppIcon = Midday
     write_imageset("AppIcon", images["Midday"])
 
-    # Web favicon = Midday
+    # Web favicon (SVG) + apple-touch-icon (PNG 512) — both use Midday.
     write_svg(VARIANTS["Midday"])
+    midday = images["Midday"]
+    touch_path = os.path.join(os.path.dirname(__file__), "..", "..", "web/apple-touch-icon.png")
+    midday.resize((512, 512), Image.LANCZOS).save(touch_path, "PNG", optimize=True)
+    print(f"wrote {touch_path}")
 
 
 if __name__ == "__main__":
