@@ -15,6 +15,7 @@ struct TimebaseApp: App {
                 .task {
                     await store.bootstrap()
                     autoRotateIfNeeded()
+                    await weather.refreshAll(cities: store.cities)
                 }
                 .onChange(of: scenePhaseEnvironment) { _, phase in
                     if phase == .active { autoRotateIfNeeded() }

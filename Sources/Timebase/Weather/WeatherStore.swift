@@ -43,6 +43,15 @@ final class WeatherStore: Observable {
             #endif
         }
     }
+
+    /// Pre-fetch weather for the entire visible city list. Sequential to
+    /// keep the region-isolation checker happy and to be gentle on the
+    /// WeatherKit rate budget; the cache TTL prevents repeat hits.
+    func refreshAll(cities: [City]) async {
+        for city in cities {
+            await refresh(for: city)
+        }
+    }
 }
 
 /// `Observable` shim so we can `@Published` properties from a class that

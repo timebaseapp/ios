@@ -6,6 +6,7 @@ struct CityRow: View {
     var topContentInset: CGFloat = 0
     var bottomContentInset: CGFloat = 0
     @Environment(TimebaseStore.self) private var store
+    @EnvironmentObject private var weather: WeatherStore
     @Environment(\.colorScheme) private var colorScheme
 
     private var displayName: String {
@@ -64,6 +65,9 @@ struct CityRow: View {
         .background(
             ZStack {
                 LinearGradient(colors: gradient, startPoint: .top, endPoint: .bottom)
+                if let w = weather.snapshot(for: city) {
+                    WeatherEffectOverlay(condition: w.condition, tint: fg)
+                }
                 Image("grain")
                     .resizable(resizingMode: .tile)
                     .blendMode(.softLight)
@@ -75,6 +79,7 @@ struct CityRow: View {
                     .opacity(0.35)
                     .allowsHitTesting(false)
             }
+            .clipped()
         )
         .overlay(alignment: .top) {
             Rectangle()
