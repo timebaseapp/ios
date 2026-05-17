@@ -35,6 +35,13 @@ final class EventKitService {
         try store.save(event, span: .thisEvent, commit: true)
     }
 
+    /// Fetch a fresh EKEvent by its identifier — gives us everything
+    /// (location, notes, attendees, calendar, recurrence) the lightweight
+    /// `UpcomingEvent` projection doesn't carry.
+    func event(withIdentifier id: String) -> EKEvent? {
+        store.event(withIdentifier: id)
+    }
+
     func requestAccess() async -> Bool {
         do {
             if #available(iOS 17, *) {

@@ -7,6 +7,7 @@ import SwiftUI
 struct UpNextScreen: View {
     @Environment(TimebaseStore.self) private var store
     @State private var showScheduler = false
+    @State private var selectedEvent: UpcomingEvent?
 
     var body: some View {
         ZStack {
@@ -67,6 +68,27 @@ struct UpNextScreen: View {
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
+        .sheet(item: $selectedEvent) { event in
+            EventDetailSheet(upcoming: event)
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+        }
+        .environment(\.upNextOnTap, { event in
+            Haptics.buttonPressed()
+            selectedEvent = event
+        })
+    }
+}
+
+/// Passes the "tap an event card" callback down to the EventCard rendering
+/// in UpNextSection without making the section/card know about the parent.
+private struct UpNextOnTapKey: EnvironmentKey {
+    @MainActor static let defaultValue: ((UpcomingEvent) -> Void)? = nil
+}
+extension EnvironmentValues {
+    var upNextOnTap: ((UpcomingEvent) -> Void)? {
+        get { self[UpNextOnTapKey.self] }
+        set { self[UpNextOnTapKey.self] = newValue }
     }
 }
 
@@ -124,6 +146,7 @@ private struct EventCard: View {
     let now: Date
     @Environment(TimebaseStore.self) private var store
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.upNextOnTap) private var onTap
 
     var body: some View {
         let hourAtHome = fractionalHourAtHome
@@ -168,6 +191,8 @@ private struct EventCard: View {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .stroke(.primary.opacity(0.08), lineWidth: 0.5)
         )
+        .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .onTapGesture { onTap?(event) }
     }
 
     private var homeTimeZone: TimeZone {

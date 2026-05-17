@@ -37,7 +37,9 @@ struct TrafficLightsBar: View {
     }
 }
 
-private struct TrafficLight: View {
+/// Decorative-or-functional macOS-style traffic light. Hoisted out of the
+/// shared `TrafficLightsBar` so sheets can use individual lights.
+struct TrafficLight: View {
     let color: Color
     let symbol: String
     let showSymbol: Bool
@@ -58,6 +60,30 @@ private struct TrafficLight: View {
             .frame(width: 13, height: 13)
         }
         .buttonStyle(.plain)
+    }
+}
+
+/// Standard macOS-style traffic lights for sheets — red dismisses, yellow +
+/// green are decorative. Padded with breathing room.
+struct SheetTrafficLights: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        HStack(spacing: 8) {
+            TrafficLight(color: Color(red: 1.0, green: 0.373, blue: 0.341),
+                         symbol: "xmark", showSymbol: true) {
+                Haptics.buttonPressed()
+                dismiss()
+            }
+            TrafficLight(color: Color(red: 1.0, green: 0.741, blue: 0.180),
+                         symbol: "minus", showSymbol: false) { }
+            TrafficLight(color: Color(red: 0.157, green: 0.788, blue: 0.251),
+                         symbol: "square", showSymbol: false) { }
+            Spacer()
+        }
+        .padding(.horizontal, 22)
+        .padding(.top, 22)
+        .padding(.bottom, 14)
     }
 }
 
