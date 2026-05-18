@@ -214,6 +214,46 @@ final class TimebaseStore {
         Haptics.snapToNow()
     }
 
+    /// Advances the *displayed* home-tz time by one hour in `direction`
+    /// (+1 / -1), landing on the next or previous `:00` boundary in the
+    /// user's home timezone. So a 10:32 AM IST display jumps to 11:00 IST,
+    /// not 11:32 IST. Bypasses the 5-minute snap so the landing is exact.
+    func pinchStep(direction: Int) {
+        guard direction != 0 else { return }
+        let tz = homeCity?.timeZoneObject ?? .current
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = tz
+
+        let displayed = displayDate
+        let hourComponents = cal.dateComponents([.year, .month, .day, .hour], from: displayed)
+        guard let topOfHour = cal.date(from: hourComponents) else { return }
+        let target: Date
+        if direction > 0 {
+            // Always advance to the NEXT top-of-hour, even if we're already
+            // on the dot (so consecutive pinches keep moving).
+            target = cal.date(byAdding: .hour, value: 1, to: topOfHour) ?? topOfHour
+        } else {
+            // Going back: if we're already on the dot, go to the previous
+            // hour; otherwise snap back to the current hour's :00.
+            if displayed.timeIntervalSince(topOfHour) < 1.0 {
+                target = cal.date(byAdding: .hour, value: -1, to: topOfHour) ?? topOfHour
+            } else {
+                target = topOfHour
+            }
+        }
+        let newOffset = (target.timeIntervalSinceNow / 60).rounded()
+        let bound = Self.scrubBoundMinutes
+        let clamped = max(-bound, min(bound, newOffset))
+        // Bypass the 5-minute snapping for this assignment — the home-tz
+        // hour boundary is the source of truth.
+        snapScrubToFiveMinutes = false
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+            scrubOffsetMinutes = clamped
+        }
+        snapScrubToFiveMinutes = true
+        Haptics.scrubHourBoundary()
+    }
+
     func goTo(tab: ScreenTab) {
         guard currentTab != tab else { return }
         withAnimation(.spring(response: 0.4, dampingFraction: 0.86)) {
