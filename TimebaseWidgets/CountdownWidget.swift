@@ -38,14 +38,31 @@ struct CountdownProvider: TimelineProvider {
     }
     func getTimeline(in context: Context, completion: @escaping (Timeline<CountdownEntry>) -> Void) {
         let events = WidgetStore.loadEvents()
-        // Single entry — `Text(timerInterval:)` keeps the countdown ticking
-        // natively so the widget doesn't need new entries to look alive.
-        let entry = CountdownEntry(date: .now, events: events)
-        // Refresh when the soonest event ends, or in 30 minutes — whichever
-        // is sooner — so widget content rolls forward as events pass.
-        let next = events.first.map { $0.endDate }
-            ?? Calendar.current.date(byAdding: .minute, value: 30, to: .now) ?? .now
-        completion(Timeline(entries: [entry], policy: .after(next)))
+        // The Small widget uses native Text(timerInterval:) which ticks
+        // every second by itself, but Medium / Large render a pre-formatted
+        // "rich countdown" string (with d/h/m). For that to feel live, emit
+        // a series of minute-spaced entries for the next hour. After that,
+        // emit 5-minute spaced entries up to 6h — beyond which the deltas
+        // change too slowly to matter and the system reload kicks in.
+        let cal = Calendar.current
+        let base = cal.date(bySetting: .second, value: 0, of: .now) ?? .now
+        var entries: [CountdownEntry] = []
+        for i in 0 ..< 60 {
+            if let d = cal.date(byAdding: .minute, value: i, to: base) {
+                entries.append(CountdownEntry(date: d, events: events))
+            }
+        }
+        for i in stride(from: 65, through: 360, by: 5) {
+            if let d = cal.date(byAdding: .minute, value: i, to: base) {
+                entries.append(CountdownEntry(date: d, events: events))
+            }
+        }
+        // Pick the soonest of [last entry + 1m, soonest event end] as the
+        // reload trigger so passing events drop off promptly.
+        let after = entries.last.map { $0.date.addingTimeInterval(60) } ?? .now
+        let soonestEnd = events.first?.endDate ?? after
+        let next = min(after, soonestEnd)
+        completion(Timeline(entries: entries, policy: .after(next)))
     }
 
     /// Used when no EventKit data is available (preview / first launch).
@@ -132,19 +149,16 @@ private struct CountdownMediumView: View {
         let events = Array(entry.events.prefix(3))
         Color.clear
             .containerBackground(for: .widget) {
-                ZStack {
-                    eventBackground(for: events.first)
-                    if events.isEmpty {
+                if events.isEmpty {
+                    ZStack {
+                        eventBackground(for: nil)
                         emptyState
-                    } else {
-                        VStack(alignment: .leading, spacing: 10) {
-                            ForEach(events, id: \.id) { event in
-                                eventRow(event: event, primary: event.id == events.first?.id)
-                            }
-                            Spacer(minLength: 0)
+                    }
+                } else {
+                    VStack(spacing: 0) {
+                        ForEach(events, id: \.id) { event in
+                            countdownEventStrip(event: event, now: entry.date)
                         }
-                        .padding(14)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                     }
                 }
             }
@@ -159,19 +173,16 @@ private struct CountdownLargeView: View {
         let events = Array(entry.events.prefix(6))
         Color.clear
             .containerBackground(for: .widget) {
-                ZStack {
-                    eventBackground(for: events.first)
-                    if events.isEmpty {
+                if events.isEmpty {
+                    ZStack {
+                        eventBackground(for: nil)
                         emptyState
-                    } else {
-                        VStack(alignment: .leading, spacing: 12) {
-                            ForEach(events, id: \.id) { event in
-                                eventRow(event: event, primary: event.id == events.first?.id)
-                            }
-                            Spacer(minLength: 0)
+                    }
+                } else {
+                    VStack(spacing: 0) {
+                        ForEach(events, id: \.id) { event in
+                            countdownEventStrip(event: event, now: entry.date)
                         }
-                        .padding(16)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                     }
                 }
             }
@@ -283,6 +294,37 @@ private func eventRow(event: WidgetEvent, primary: Bool) -> some View {
     }
 }
 
+/// One full-bleed gradient strip per event — mirrors WorldClockWidget's
+/// per-city row pattern. Title left, countdown right.
+@ViewBuilder
+private func countdownEventStrip(event: WidgetEvent, now: Date) -> some View {
+    let h = hourOfDay(event.startDate, tz: event.timeZone)
+    let grad = WidgetTimeColor.gradient(forHour: h)
+    let fg = WidgetTimeColor.foreground(forHour: h)
+    ZStack {
+        LinearGradient(colors: grad, startPoint: .top, endPoint: .bottom)
+        HStack(alignment: .center, spacing: 10) {
+            VStack(alignment: .leading, spacing: 1) {
+                Text(event.title)
+                    .font(.system(size: 14, weight: .medium))
+                    .lineLimit(1)
+                Text(eventTimeRange(event: event))
+                    .font(.system(size: 10, design: .monospaced))
+                    .opacity(0.72)
+            }
+            Spacer(minLength: 8)
+            Text(richCountdown(target: event.startDate, now: now))
+                .font(.system(size: 16, weight: .heavy))
+                .monospacedDigit()
+                .lineLimit(1)
+                .frame(alignment: .trailing)
+        }
+        .foregroundStyle(fg)
+        .padding(.horizontal, 14)
+    }
+    .frame(maxHeight: .infinity)
+}
+
 @ViewBuilder
 private func countdownText(target: Date) -> some View {
     if target > Date() {
@@ -290,6 +332,32 @@ private func countdownText(target: Date) -> some View {
     } else {
         Text("now")
     }
+}
+
+private func hourOfDay(_ date: Date, tz: TimeZone) -> Double {
+    var cal = Calendar(identifier: .gregorian)
+    cal.timeZone = tz
+    let comps = cal.dateComponents([.hour, .minute], from: date)
+    return Double(comps.hour ?? 0) + Double(comps.minute ?? 0) / 60.0
+}
+
+/// "12d 4h" / "3h 14m" / "47m" / "30s" / "now" — `now` is the entry's
+/// reference date, so the same string is correct whether the widget is
+/// rendering an entry for current wall time or a future scheduled entry.
+private func richCountdown(target: Date, now: Date) -> String {
+    let interval = target.timeIntervalSince(now)
+    if interval < 60 { return interval < 1 ? "now" : "\(Int(interval))s" }
+    let total = Int(interval)
+    let days = total / 86400
+    let hours = (total % 86400) / 3600
+    let minutes = (total % 3600) / 60
+    if days >= 1 {
+        return hours > 0 ? "\(days)d \(hours)h" : "\(days)d"
+    }
+    if hours >= 1 {
+        return minutes > 0 ? "\(hours)h \(minutes)m" : "\(hours)h"
+    }
+    return "\(minutes)m"
 }
 
 private func eventTimeRange(event: WidgetEvent) -> String {
