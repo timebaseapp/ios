@@ -61,30 +61,19 @@ struct EventCountdownLiveActivity: Widget {
                     .padding(.top, 2)
                 }
             } compactLeading: {
-                // Both pieces in ONE region so the pill doesn't span the
-                // camera notch. With content only on the leading side, the
-                // system renders a compact bubble on the left rather than
-                // the stretched-around-camera U-shape.
-                HStack(spacing: 5) {
-                    GradientDot(date: context.state.start,
-                                tzId: context.attributes.eventTzIdentifier)
-                        .frame(width: 14, height: 14)
-                    if context.state.start > Date() {
-                        Text(timerInterval: Date() ... context.state.start,
-                             countsDown: true,
-                             showsHours: false)
-                            .monospacedDigit()
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(.white)
-                    } else {
-                        Text("now")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(.white)
-                    }
-                }
+                // Dot on the left, countdown on the right — same layout
+                // Apple's own Timer Live Activity uses. The compact pill
+                // stays content-sized because Text(_:style: .timer) sizes
+                // to its CURRENT value (e.g. "2:18") rather than reserving
+                // the widest-format width.
+                GradientDot(date: context.state.start,
+                            tzId: context.attributes.eventTzIdentifier)
+                    .frame(width: 16, height: 16)
             } compactTrailing: {
-                // Empty — keeping content one-sided keeps the pill compact.
-                EmptyView()
+                Text(context.state.start, style: .timer)
+                    .monospacedDigit()
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(.white)
             } minimal: {
                 GradientDot(date: context.state.start,
                             tzId: context.attributes.eventTzIdentifier)
