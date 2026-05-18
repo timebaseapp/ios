@@ -10,15 +10,21 @@ struct SchedulerSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var title: String = ""
-    /// The meeting time as an absolute Date — interpreted in the user's home
-    /// timezone for display. SwiftUI re-renders dependents instantly when this
-    /// changes, so the "For everyone" section never lags.
+    /// The meeting time as an absolute Date — interpreted in the anchor
+    /// city's timezone for display. SwiftUI re-renders dependents instantly
+    /// when this changes, so the "For everyone" section never lags.
     @State private var meetingTime: Date = defaultMeetingTime()
     @State private var participantIds: [String] = []
+    /// Which participant the date/time picker is anchored to. Defaults to
+    /// the user's home city, but can be set to any participant — useful
+    /// when you're planning around someone else's wake hours.
+    @State private var anchorCityId: String?
     @State private var durationMinutes: Int = 30
     @State private var showPicker = false
     @State private var draftEvent: EKEvent?
     @FocusState private var titleFocused: Bool
+
+    @AppStorage("timebase.scheduler.anchorHintDismissed") private var anchorHintDismissed = false
 
     private let calendarService = EventKitService()
     private let durations = [15, 30, 45, 60, 90, 120]
@@ -168,18 +174,35 @@ struct SchedulerSheet: View {
                             .stroke(.primary.opacity(0.08), lineWidth: 0.5)
                     )
             )
+            if !anchorHintDismissed && participants.count >= 2 {
+                Text("Tap a participant to anchor the meeting around their timezone.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 4)
+            }
         }
     }
 
     private func participantRow(_ city: City) -> some View {
-        HStack(spacing: 8) {
+        let isAnchor = (city.id == effectiveAnchorCityId)
+        return HStack(spacing: 8) {
             if city.id == store.homeCityId {
                 Text("🏠").font(.system(size: 14))
             }
             Text(city.name).font(.system(size: 15))
+            if isAnchor {
+                Image(systemName: "pin.fill")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.primary.opacity(0.6))
+            }
             Spacer()
             Button {
                 participantIds.removeAll { $0 == city.id }
+                // If we just removed the current anchor, clear it so
+                // effectiveAnchorCityId falls back to home / first.
+                if anchorCityId == city.id {
+                    anchorCityId = nil
+                }
             } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 12, weight: .bold))
@@ -189,14 +212,33 @@ struct SchedulerSheet: View {
         }
         .padding(.horizontal, 14)
         .frame(height: 44)
+        .background(
+            isAnchor
+            ? Color.primary.opacity(0.04)
+            : Color.clear
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            Haptics.buttonPressed()
+            anchorCityId = city.id
+            anchorHintDismissed = true
+        }
     }
 
     /// Native iOS date + time picker — compact style. Tap either to bring up
     /// the wheel/calendar in a popover. Two rows: date row, time row.
+    /// The picker reads/writes in the *anchor* timezone (not necessarily
+    /// the user's home), so "10 AM" means 10 AM at the anchored city.
     private var whenSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
                 sectionHeader("WHEN")
+                if let anchorName = anchorCityName, anchorCityId != store.homeCityId {
+                    Text("· in \(anchorName)")
+                        .font(.custom("DepartureMono-Regular", size: 10))
+                        .tracking(0.5)
+                        .foregroundStyle(.secondary)
+                }
                 if isWeekend {
                     Text("· \(weekdayName) — heads up, it's the weekend")
                         .font(.custom("DepartureMono-Regular", size: 10))
@@ -220,7 +262,7 @@ struct SchedulerSheet: View {
                     .padding(.horizontal, 14)
                     .frame(height: 44)
             }
-            .environment(\.timeZone, homeTimeZone)
+            .environment(\.timeZone, anchorTimeZone)
             .background(
                 RoundedRectangle(cornerRadius: 12)
                     .fill(Color.primary.opacity(0.05))
@@ -234,14 +276,14 @@ struct SchedulerSheet: View {
 
     private var isWeekend: Bool {
         var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = homeTimeZone
+        cal.timeZone = anchorTimeZone
         let weekday = cal.component(.weekday, from: meetingTime)
         return weekday == 1 || weekday == 7   // Sunday=1, Saturday=7
     }
 
     private var weekdayName: String {
         var fmt = Date.FormatStyle.dateTime.weekday(.wide)
-        fmt.timeZone = homeTimeZone
+        fmt.timeZone = anchorTimeZone
         return fmt.format(meetingTime)
     }
 
@@ -357,6 +399,29 @@ struct SchedulerSheet: View {
         store.homeCity?.timeZoneObject ?? .current
     }
 
+    /// The id of the city the date picker is anchored to. If the user
+    /// explicitly picked one and it's still in the participant list, use
+    /// that. Otherwise fall back to home, then first participant.
+    private var effectiveAnchorCityId: String? {
+        if let id = anchorCityId, participantIds.contains(id) { return id }
+        if let homeId = store.homeCityId, participantIds.contains(homeId) { return homeId }
+        return participantIds.first
+    }
+
+    private var anchorCity: City? {
+        guard let id = effectiveAnchorCityId else { return nil }
+        return store.cities.first(where: { $0.id == id })
+            ?? store.cityDatabase.first(where: { $0.id == id })
+    }
+
+    private var anchorTimeZone: TimeZone {
+        anchorCity?.timeZoneObject ?? homeTimeZone
+    }
+
+    private var anchorCityName: String? {
+        anchorCity?.name
+    }
+
     private var participants: [City] {
         participantIds.compactMap { id in
             store.cities.first(where: { $0.id == id }) ??
@@ -414,6 +479,10 @@ struct SchedulerSheet: View {
         #endif
         if participantIds.isEmpty, let homeId = store.homeCityId {
             participantIds = [homeId]
+        }
+        // Default anchor to home, if home is one of the participants.
+        if anchorCityId == nil {
+            anchorCityId = store.homeCityId
         }
     }
 
