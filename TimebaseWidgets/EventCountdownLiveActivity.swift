@@ -65,21 +65,23 @@ struct EventCountdownLiveActivity: Widget {
                             tzId: context.attributes.eventTzIdentifier)
                     .frame(width: 18, height: 18)
             } compactTrailing: {
-                // showsHours: false locks the format to MM:SS — fits the
-                // narrow trailing region of the pill without truncation.
-                // For events >99 min out it'll show e.g. "120:00" which
-                // is wider than ideal, but Live Activities are only
-                // started ≤1h before an event so we stay in MM:SS land.
+                // Dynamic Island bg is always black, so an explicit white
+                // gives the cleanest contrast. showsHours: false keeps the
+                // format MM:SS — fits the narrow trailing region. Live
+                // Activities only start ≤1h before an event so we stay in
+                // MM:SS land naturally.
                 if context.state.start > Date() {
                     Text(timerInterval: Date() ... context.state.start,
                          countsDown: true,
                          showsHours: false)
                         .monospacedDigit()
                         .font(.caption.weight(.semibold))
+                        .foregroundStyle(.white)
                         .multilineTextAlignment(.trailing)
                 } else {
                     Text("now")
                         .font(.caption.weight(.semibold))
+                        .foregroundStyle(.white)
                 }
             } minimal: {
                 GradientDot(date: context.state.start,
@@ -149,32 +151,29 @@ private struct LockScreenCard: View {
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundStyle(secondary)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                // Countdown right-pinned. Wrap in a VStack with explicit
-                // trailing alignment so the timer text hugs the edge
-                // regardless of which countdown format width is active.
-                // `Text(timerInterval:)` is the recommended Live Activity
-                // API — `.timer` style was rendering blank on iOS 18.
-                VStack(alignment: .trailing, spacing: 0) {
-                    if context.state.start > Date() {
-                        Text(timerInterval: Date() ... context.state.start,
-                             countsDown: true)
-                            .monospacedDigit()
-                            .font(.system(size: 32, weight: .heavy))
-                            .foregroundStyle(fg)
-                            .minimumScaleFactor(0.6)
-                            .lineLimit(1)
-                            .multilineTextAlignment(.trailing)
-                    } else {
-                        Text("now")
-                            .font(.system(size: 32, weight: .heavy))
-                            .foregroundStyle(fg)
-                    }
+                // Countdown sits at the trailing edge naturally because
+                // HStack lays children left-to-right; the VStack above is
+                // not flexible so it takes its content's natural width, and
+                // the Text below takes its natural width. The card extends
+                // to fit both, and the countdown is right-pinned by the
+                // outer card width.
+                if context.state.start > Date() {
+                    Text(timerInterval: Date() ... context.state.start,
+                         countsDown: true)
+                        .monospacedDigit()
+                        .font(.system(size: 30, weight: .heavy))
+                        .foregroundStyle(fg)
+                        .minimumScaleFactor(0.7)
+                        .lineLimit(1)
+                } else {
+                    Text("now")
+                        .font(.system(size: 30, weight: .heavy))
+                        .foregroundStyle(fg)
                 }
-                .layoutPriority(1)
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 14)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .activityBackgroundTint(Color.clear)
         .activitySystemActionForegroundColor(fg)
