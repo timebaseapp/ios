@@ -72,10 +72,7 @@ struct ClockListView: View {
                         store.scrubOffsetMinutes += Double(-dy) / scrubPixelsPerMinute
                         ScrubHaptics.update(store: store)
                     },
-                    onDoubleTap: { store.snapToNow() },
-                    onPinchStep: { direction in
-                        store.pinchStep(direction: direction)
-                    }
+                    onDoubleTap: { store.snapToNow() }
                 )
                 .ignoresSafeArea()
 

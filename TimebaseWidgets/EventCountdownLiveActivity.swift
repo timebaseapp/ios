@@ -30,14 +30,22 @@ struct EventCountdownLiveActivity: Widget {
                     }
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    // Same reasoning as compactTrailing — use the system
-                    // `.timer` style; works reliably in expanded regions.
-                    Text(context.state.start, style: .timer)
-                        .monospacedDigit()
-                        .font(.system(size: 20, weight: .heavy))
-                        .foregroundStyle(.white)
-                        .multilineTextAlignment(.trailing)
-                        .frame(maxWidth: .infinity, alignment: .trailing)
+                    // Use `Text(timerInterval:)` — Apple's recommended API
+                    // for Live Activity countdowns. Renders + ticks
+                    // server-side through the system without us pushing
+                    // updates.
+                    if context.state.start > Date() {
+                        Text(timerInterval: Date() ... context.state.start,
+                             countsDown: true)
+                            .monospacedDigit()
+                            .font(.system(size: 20, weight: .heavy))
+                            .foregroundStyle(.white)
+                            .multilineTextAlignment(.trailing)
+                    } else {
+                        Text("now")
+                            .font(.system(size: 20, weight: .heavy))
+                            .foregroundStyle(.white)
+                    }
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     HStack(spacing: 12) {
@@ -57,15 +65,22 @@ struct EventCountdownLiveActivity: Widget {
                             tzId: context.attributes.eventTzIdentifier)
                     .frame(width: 18, height: 18)
             } compactTrailing: {
-                // `Text(_:style: .timer)` is the reliable API for compact
-                // Dynamic Island countdowns — `Text(timerInterval:)` has
-                // a long-standing bug in this region where the content
-                // renders zero-width / invisible. The system handles
-                // vibrancy, sizing, and ticking automatically.
-                Text(context.state.start, style: .timer)
-                    .monospacedDigit()
-                    .font(.caption.weight(.semibold))
-                    .multilineTextAlignment(.trailing)
+                // showsHours: false locks the format to MM:SS — fits the
+                // narrow trailing region of the pill without truncation.
+                // For events >99 min out it'll show e.g. "120:00" which
+                // is wider than ideal, but Live Activities are only
+                // started ≤1h before an event so we stay in MM:SS land.
+                if context.state.start > Date() {
+                    Text(timerInterval: Date() ... context.state.start,
+                         countsDown: true,
+                         showsHours: false)
+                        .monospacedDigit()
+                        .font(.caption.weight(.semibold))
+                        .multilineTextAlignment(.trailing)
+                } else {
+                    Text("now")
+                        .font(.caption.weight(.semibold))
+                }
             } minimal: {
                 GradientDot(date: context.state.start,
                             tzId: context.attributes.eventTzIdentifier)
@@ -114,7 +129,7 @@ private struct LockScreenCard: View {
         ZStack {
             LinearGradient(colors: grad, startPoint: .topLeading, endPoint: .bottomTrailing)
 
-            HStack(alignment: .center, spacing: 14) {
+            HStack(alignment: .center, spacing: 12) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("UP NEXT")
                         .font(.system(size: 10, design: .monospaced))
@@ -135,14 +150,28 @@ private struct LockScreenCard: View {
                     .foregroundStyle(secondary)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                Text(context.state.start, style: .timer)
-                    .monospacedDigit()
-                    .font(.system(size: 34, weight: .heavy))
-                    .foregroundStyle(fg)
-                    .minimumScaleFactor(0.6)
-                    .lineLimit(1)
-                    .multilineTextAlignment(.trailing)
-                    .fixedSize(horizontal: true, vertical: false)
+                // Countdown right-pinned. Wrap in a VStack with explicit
+                // trailing alignment so the timer text hugs the edge
+                // regardless of which countdown format width is active.
+                // `Text(timerInterval:)` is the recommended Live Activity
+                // API — `.timer` style was rendering blank on iOS 18.
+                VStack(alignment: .trailing, spacing: 0) {
+                    if context.state.start > Date() {
+                        Text(timerInterval: Date() ... context.state.start,
+                             countsDown: true)
+                            .monospacedDigit()
+                            .font(.system(size: 32, weight: .heavy))
+                            .foregroundStyle(fg)
+                            .minimumScaleFactor(0.6)
+                            .lineLimit(1)
+                            .multilineTextAlignment(.trailing)
+                    } else {
+                        Text("now")
+                            .font(.system(size: 32, weight: .heavy))
+                            .foregroundStyle(fg)
+                    }
+                }
+                .layoutPriority(1)
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 14)

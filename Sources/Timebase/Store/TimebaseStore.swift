@@ -84,9 +84,7 @@ final class TimebaseStore {
             // (so display lands on :00 :05 :10 :15 etc, regardless of
             // current real-time minute). At rest (offset == 0) we leave
             // alone so the live clock shows the true current minute.
-            // Skipped when scrubSnapDisabled is set — pinch + snapToNow
-            // need exact landings.
-            if !scrubSnapDisabled && scrubOffsetMinutes != 0 {
+            if scrubOffsetMinutes != 0 {
                 let real = Date()
                 let target = real.addingTimeInterval(scrubOffsetMinutes * 60)
                 // 5 minutes = 300 seconds. Aligning to reference-date
@@ -104,10 +102,6 @@ final class TimebaseStore {
         }
     }
 
-    /// While true, `scrubOffsetMinutes` does NOT round to the nearest 5
-    /// after each set. Used inside `pinchStep` and `snapToNow` so they
-    /// can land on exact targets.
-    private var scrubSnapDisabled: Bool = false
 
     static let scrubBoundMinutes: Double = 2 * 24 * 60
 
@@ -242,45 +236,6 @@ final class TimebaseStore {
         Haptics.snapToNow()
     }
 
-    /// Advances the *displayed* home-tz time by one hour in `direction`
-    /// (+1 / -1), landing on the next or previous `:00` boundary in the
-    /// user's home timezone. So a 10:32 AM IST display jumps to 11:00 IST,
-    /// not 11:32 IST. Bypasses the 5-minute snap so the landing is exact.
-    func pinchStep(direction: Int) {
-        guard direction != 0 else { return }
-        let tz = homeCity?.timeZoneObject ?? .current
-        var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = tz
-
-        let displayed = displayDate
-        let hourComponents = cal.dateComponents([.year, .month, .day, .hour], from: displayed)
-        guard let topOfHour = cal.date(from: hourComponents) else { return }
-        let target: Date
-        if direction > 0 {
-            // Always advance to the NEXT top-of-hour, even if we're already
-            // on the dot (so consecutive pinches keep moving).
-            target = cal.date(byAdding: .hour, value: 1, to: topOfHour) ?? topOfHour
-        } else {
-            // Going back: if we're already on the dot, go to the previous
-            // hour; otherwise snap back to the current hour's :00.
-            if displayed.timeIntervalSince(topOfHour) < 1.0 {
-                target = cal.date(byAdding: .hour, value: -1, to: topOfHour) ?? topOfHour
-            } else {
-                target = topOfHour
-            }
-        }
-        let newOffset = (target.timeIntervalSinceNow / 60).rounded()
-        let bound = Self.scrubBoundMinutes
-        let clamped = max(-bound, min(bound, newOffset))
-        // Bypass the 5-minute snapping for this assignment — the home-tz
-        // hour boundary is the source of truth.
-        scrubSnapDisabled = true
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-            scrubOffsetMinutes = clamped
-        }
-        scrubSnapDisabled = false
-        Haptics.scrubHourBoundary()
-    }
 
     func goTo(tab: ScreenTab) {
         guard currentTab != tab else { return }

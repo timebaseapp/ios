@@ -13,9 +13,6 @@ struct UniversalScrubContainer<Content: View>: UIViewControllerRepresentable {
     let content: Content
     let onVerticalPan: (CGFloat) -> Void
     let onDoubleTap: () -> Void
-    /// Fired once per pinch "step". +1 when the user pinches out past the
-    /// threshold, -1 when they pinch in.
-    let onPinchStep: (Int) -> Void
 
     func makeUIViewController(context: Context) -> ScrubHostingController<Content> {
         ScrubHostingController(rootView: content, coordinator: context.coordinator)
@@ -25,31 +22,21 @@ struct UniversalScrubContainer<Content: View>: UIViewControllerRepresentable {
         host.rootView = content
         context.coordinator.onVerticalPan = onVerticalPan
         context.coordinator.onDoubleTap = onDoubleTap
-        context.coordinator.onPinchStep = onPinchStep
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(onVerticalPan: onVerticalPan, onDoubleTap: onDoubleTap, onPinchStep: onPinchStep)
+        Coordinator(onVerticalPan: onVerticalPan, onDoubleTap: onDoubleTap)
     }
 
     @MainActor
     final class Coordinator: NSObject, UIGestureRecognizerDelegate {
         var onVerticalPan: (CGFloat) -> Void
         var onDoubleTap: () -> Void
-        var onPinchStep: (Int) -> Void
-
-        /// Cumulative scale baseline for the pinch recognizer. Reset to 1.0
-        /// each time a step fires, so continuous pinching keeps stepping.
-        private var pinchBaseline: CGFloat = 1.0
-        private let pinchOutThreshold: CGFloat = 1.20
-        private let pinchInThreshold: CGFloat = 0.83
 
         init(onVerticalPan: @escaping (CGFloat) -> Void,
-             onDoubleTap: @escaping () -> Void,
-             onPinchStep: @escaping (Int) -> Void) {
+             onDoubleTap: @escaping () -> Void) {
             self.onVerticalPan = onVerticalPan
             self.onDoubleTap = onDoubleTap
-            self.onPinchStep = onPinchStep
         }
 
         @objc func pan(_ r: UIPanGestureRecognizer) {
@@ -63,39 +50,10 @@ struct UniversalScrubContainer<Content: View>: UIViewControllerRepresentable {
             onDoubleTap()
         }
 
-        @objc func pinch(_ r: UIPinchGestureRecognizer) {
-            switch r.state {
-            case .began:
-                pinchBaseline = 1.0
-            case .changed:
-                // Step counter — `scale` is cumulative since .began. We
-                // compare against our moving baseline so the user can keep
-                // pinching past the first step.
-                let delta = r.scale / pinchBaseline
-                if delta >= pinchOutThreshold {
-                    onPinchStep(+1)
-                    pinchBaseline = r.scale
-                } else if delta <= pinchInThreshold {
-                    onPinchStep(-1)
-                    pinchBaseline = r.scale
-                }
-            case .ended, .cancelled, .failed:
-                pinchBaseline = 1.0
-            default:
-                break
-            }
-        }
-
-        // Coexist with tap / long-press / pinch, but NOT with other pans
-        // — we want ours and TabView's to be mutually exclusive so
-        // vertical scrubbing never coincides with a page swipe. Pinch
-        // gets explicit allowance so 2-finger spreads can begin while a
-        // single-finger pan is in flight (otherwise the pan gates pinch).
+        // Coexist with tap / long-press, but NOT with other pans — we want
+        // ours and TabView's to be mutually exclusive so vertical scrubbing
+        // never coincides with a page swipe.
         func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
-            if gestureRecognizer is UIPinchGestureRecognizer ||
-               otherGestureRecognizer is UIPinchGestureRecognizer {
-                return true
-            }
             if otherGestureRecognizer is UIPanGestureRecognizer { return false }
             return true
         }
@@ -131,14 +89,6 @@ final class ScrubHostingController<Content: View>: UIHostingController<Content> 
         dbl.delegate = coordinator
         dbl.cancelsTouchesInView = false
         view.addGestureRecognizer(dbl)
-
-        // Pinch — coexists with the pan recognizer (different gesture class)
-        // so the user can pan-scrub minutes and pinch-jump hours simultaneously
-        // if they want, without either recognizer disabling the other.
-        let pinch = UIPinchGestureRecognizer(target: coordinator, action: #selector(UniversalScrubContainer<Content>.Coordinator.pinch(_:)))
-        pinch.delegate = coordinator
-        pinch.cancelsTouchesInView = false
-        view.addGestureRecognizer(pinch)
     }
 
     @MainActor required dynamic init?(coder aDecoder: NSCoder) {
