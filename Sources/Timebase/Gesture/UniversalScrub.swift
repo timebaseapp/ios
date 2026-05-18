@@ -86,10 +86,16 @@ struct UniversalScrubContainer<Content: View>: UIViewControllerRepresentable {
             }
         }
 
-        // Coexist with tap / long-press, but NOT with other pans — we want
-        // ours and TabView's to be mutually exclusive so vertical scrubbing
-        // never coincides with a page swipe.
+        // Coexist with tap / long-press / pinch, but NOT with other pans
+        // — we want ours and TabView's to be mutually exclusive so
+        // vertical scrubbing never coincides with a page swipe. Pinch
+        // gets explicit allowance so 2-finger spreads can begin while a
+        // single-finger pan is in flight (otherwise the pan gates pinch).
         func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+            if gestureRecognizer is UIPinchGestureRecognizer ||
+               otherGestureRecognizer is UIPinchGestureRecognizer {
+                return true
+            }
             if otherGestureRecognizer is UIPanGestureRecognizer { return false }
             return true
         }

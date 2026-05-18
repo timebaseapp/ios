@@ -50,7 +50,19 @@ final class TimebaseStore {
     // MARK: - Persisted
     var cities: [City] = []
     var homeCityId: String?
-    var settings = UserSettings()
+    var settings = UserSettings() {
+        didSet {
+            // Persist whenever any field changes. Skipped during `load()`
+            // via the `isHydratingFromDisk` flag so we don't echo the
+            // hydration write back to disk + iCloud.
+            guard !isHydratingFromDisk else { return }
+            save()
+        }
+    }
+    /// Guards `settings.didSet` so loading from disk doesn't trigger a
+    /// redundant save (load() assigns all four persisted fields in
+    /// sequence; we only want the first foreground mutation to write).
+    private var isHydratingFromDisk = false
     var hasCompletedOnboarding = false
 
     // MARK: - Transient
@@ -68,23 +80,34 @@ final class TimebaseStore {
                 if oldValue > -bound { Haptics.scrubCapHit() }
                 return
             }
-            // Snap to 5-minute increments so sub-minute jitter doesn't make
-            // the pill flicker between values. Pinch / snapToNow / hour
-            // boundaries are already multiples of 5, so the snap is a no-op
-            // for those paths.
-            if snapScrubToFiveMinutes {
-                let snapped = (scrubOffsetMinutes / 5).rounded() * 5
-                if snapped != scrubOffsetMinutes {
-                    scrubOffsetMinutes = snapped
+            // Snap the *displayed wall-clock minute* to the nearest 5
+            // (so display lands on :00 :05 :10 :15 etc, regardless of
+            // current real-time minute). At rest (offset == 0) we leave
+            // alone so the live clock shows the true current minute.
+            // Skipped when scrubSnapDisabled is set — pinch + snapToNow
+            // need exact landings.
+            if !scrubSnapDisabled && scrubOffsetMinutes != 0 {
+                let real = Date()
+                let target = real.addingTimeInterval(scrubOffsetMinutes * 60)
+                // 5 minutes = 300 seconds. Aligning to reference-date
+                // (UTC) is safe — every named timezone offset is a
+                // multiple of 15 min, so a UTC 5-min boundary maps to a
+                // 5-min boundary in every local tz too.
+                let snappedAbs = (target.timeIntervalSinceReferenceDate / 300)
+                                    .rounded() * 300
+                let snappedDate = Date(timeIntervalSinceReferenceDate: snappedAbs)
+                let snappedOffset = snappedDate.timeIntervalSince(real) / 60
+                if abs(snappedOffset - scrubOffsetMinutes) > 0.05 {
+                    scrubOffsetMinutes = snappedOffset
                 }
             }
         }
     }
 
-    /// When true (the default), `scrubOffsetMinutes` rounds to the nearest 5
-    /// after each set. Disable temporarily inside `pinchStep` so the
-    /// home-tz hour boundary lands exactly, then restore.
-    private var snapScrubToFiveMinutes: Bool = true
+    /// While true, `scrubOffsetMinutes` does NOT round to the nearest 5
+    /// after each set. Used inside `pinchStep` and `snapToNow` so they
+    /// can land on exact targets.
+    private var scrubSnapDisabled: Bool = false
 
     static let scrubBoundMinutes: Double = 2 * 24 * 60
 
@@ -251,11 +274,11 @@ final class TimebaseStore {
         let clamped = max(-bound, min(bound, newOffset))
         // Bypass the 5-minute snapping for this assignment — the home-tz
         // hour boundary is the source of truth.
-        snapScrubToFiveMinutes = false
+        scrubSnapDisabled = true
         withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
             scrubOffsetMinutes = clamped
         }
-        snapScrubToFiveMinutes = true
+        scrubSnapDisabled = false
         Haptics.scrubHourBoundary()
     }
 
@@ -297,12 +320,14 @@ final class TimebaseStore {
     /// state. Clears both UserDefaults and iCloud KVS so a relaunch lands
     /// fresh on the onboarding flow.
     func resetAll() {
+        isHydratingFromDisk = true   // suppress settings.didSet save during reset
         cities = []
         homeCityId = nil
         settings = UserSettings()
         hasCompletedOnboarding = false
         scrubOffsetMinutes = 0
         upcomingEvents = []
+        isHydratingFromDisk = false
         UserDefaults.standard.removeObject(forKey: Self.storageKey)
         Self.sharedDefaults.removeObject(forKey: Self.storageKey)
         cloudStore.clear()
@@ -390,10 +415,14 @@ final class TimebaseStore {
               let snapshot = try? JSONDecoder().decode(Persisted.self, from: data) else {
             return
         }
+        // Suppress settings.didSet during hydration so we don't echo a
+        // write back to disk + iCloud on every launch.
+        isHydratingFromDisk = true
         self.cities = snapshot.cities
         self.homeCityId = snapshot.homeCityId
         self.settings = snapshot.settings
         self.hasCompletedOnboarding = snapshot.hasCompletedOnboarding
+        isHydratingFromDisk = false
     }
 
     #if DEBUG

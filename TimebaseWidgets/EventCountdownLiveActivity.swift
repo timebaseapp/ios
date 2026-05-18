@@ -30,10 +30,14 @@ struct EventCountdownLiveActivity: Widget {
                     }
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    CountdownText(target: context.state.start)
+                    // Same reasoning as compactTrailing — use the system
+                    // `.timer` style; works reliably in expanded regions.
+                    Text(context.state.start, style: .timer)
                         .monospacedDigit()
                         .font(.system(size: 20, weight: .heavy))
                         .foregroundStyle(.white)
+                        .multilineTextAlignment(.trailing)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     HStack(spacing: 12) {
@@ -53,14 +57,15 @@ struct EventCountdownLiveActivity: Widget {
                             tzId: context.attributes.eventTzIdentifier)
                     .frame(width: 18, height: 18)
             } compactTrailing: {
-                // No custom foregroundStyle — the system applies its own
-                // vibrancy in the compact pill, and forcing .white can make
-                // the text invisible on certain wallpapers / tints. A
-                // explicit width keeps the pill expanded for the digits.
-                CountdownText(target: context.state.start)
+                // `Text(_:style: .timer)` is the reliable API for compact
+                // Dynamic Island countdowns — `Text(timerInterval:)` has
+                // a long-standing bug in this region where the content
+                // renders zero-width / invisible. The system handles
+                // vibrancy, sizing, and ticking automatically.
+                Text(context.state.start, style: .timer)
                     .monospacedDigit()
                     .font(.caption.weight(.semibold))
-                    .frame(minWidth: 44, alignment: .trailing)
+                    .multilineTextAlignment(.trailing)
             } minimal: {
                 GradientDot(date: context.state.start,
                             tzId: context.attributes.eventTzIdentifier)
@@ -130,13 +135,14 @@ private struct LockScreenCard: View {
                     .foregroundStyle(secondary)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                CountdownText(target: context.state.start)
+                Text(context.state.start, style: .timer)
                     .monospacedDigit()
                     .font(.system(size: 34, weight: .heavy))
                     .foregroundStyle(fg)
                     .minimumScaleFactor(0.6)
                     .lineLimit(1)
-                    .frame(alignment: .trailing)
+                    .multilineTextAlignment(.trailing)
+                    .fixedSize(horizontal: true, vertical: false)
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 14)
