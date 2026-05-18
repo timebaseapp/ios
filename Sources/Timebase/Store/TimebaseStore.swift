@@ -37,6 +37,11 @@ struct UserSettings: Codable {
     var hourPreference: HourPreference = .system
     var appearance: Appearance = .system
     var autoRotateIcon: Bool = false
+    /// The icon the user explicitly picked in Settings. Auto-rotate
+    /// temporarily overrides the active icon based on time-of-day; when
+    /// they turn auto-rotate OFF, we restore THIS one so their explicit
+    /// choice survives.
+    var lastUserPickedIcon: String?
 }
 
 @Observable

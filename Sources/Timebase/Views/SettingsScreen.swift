@@ -175,6 +175,9 @@ struct SettingsScreen: View {
                 Button {
                     AppIconManager.setIcon(name)
                     currentIcon = name
+                    // Remember the user's explicit pick so we can restore
+                    // it when they later turn auto-rotate off.
+                    store.settings.lastUserPickedIcon = name
                 } label: {
                     VStack(spacing: 6) {
                         ZStack {
@@ -228,8 +231,22 @@ struct SettingsScreen: View {
                 }
             }
             Spacer()
-            Toggle("", isOn: bindable.settings.autoRotateIcon)
-                .labelsHidden()
+            Toggle("", isOn: Binding(
+                get: { store.settings.autoRotateIcon },
+                set: { newValue in
+                    store.settings.autoRotateIcon = newValue
+                    if !newValue {
+                        // User just turned auto-rotate OFF — restore the
+                        // icon they last explicitly picked so their choice
+                        // isn't overwritten by whatever bucket was active.
+                        let target = store.settings.lastUserPickedIcon
+                            ?? AppIconManager.primaryName
+                        AppIconManager.setIcon(target)
+                        currentIcon = target
+                    }
+                }
+            ))
+            .labelsHidden()
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
