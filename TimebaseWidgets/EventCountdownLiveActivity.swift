@@ -61,28 +61,30 @@ struct EventCountdownLiveActivity: Widget {
                     .padding(.top, 2)
                 }
             } compactLeading: {
-                GradientDot(date: context.state.start,
-                            tzId: context.attributes.eventTzIdentifier)
-                    .frame(width: 18, height: 18)
-            } compactTrailing: {
-                // Dynamic Island bg is always black, so an explicit white
-                // gives the cleanest contrast. showsHours: false keeps the
-                // format MM:SS — fits the narrow trailing region. Live
-                // Activities only start ≤1h before an event so we stay in
-                // MM:SS land naturally.
-                if context.state.start > Date() {
-                    Text(timerInterval: Date() ... context.state.start,
-                         countsDown: true,
-                         showsHours: false)
-                        .monospacedDigit()
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.white)
-                        .multilineTextAlignment(.trailing)
-                } else {
-                    Text("now")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.white)
+                // Both pieces in ONE region so the pill doesn't span the
+                // camera notch. With content only on the leading side, the
+                // system renders a compact bubble on the left rather than
+                // the stretched-around-camera U-shape.
+                HStack(spacing: 5) {
+                    GradientDot(date: context.state.start,
+                                tzId: context.attributes.eventTzIdentifier)
+                        .frame(width: 14, height: 14)
+                    if context.state.start > Date() {
+                        Text(timerInterval: Date() ... context.state.start,
+                             countsDown: true,
+                             showsHours: false)
+                            .monospacedDigit()
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(.white)
+                    } else {
+                        Text("now")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(.white)
+                    }
                 }
+            } compactTrailing: {
+                // Empty — keeping content one-sided keeps the pill compact.
+                EmptyView()
             } minimal: {
                 GradientDot(date: context.state.start,
                             tzId: context.attributes.eventTzIdentifier)
@@ -151,12 +153,10 @@ private struct LockScreenCard: View {
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundStyle(secondary)
                 }
-                // Countdown sits at the trailing edge naturally because
-                // HStack lays children left-to-right; the VStack above is
-                // not flexible so it takes its content's natural width, and
-                // the Text below takes its natural width. The card extends
-                // to fit both, and the countdown is right-pinned by the
-                // outer card width.
+                // Flexible gap so the countdown gets pushed to the
+                // trailing edge of the card. minLength: 12 guarantees a
+                // little breathing room even with long titles.
+                Spacer(minLength: 12)
                 if context.state.start > Date() {
                     Text(timerInterval: Date() ... context.state.start,
                          countsDown: true)
