@@ -47,7 +47,17 @@ struct ClockListView: View {
                                 bottomContentInset: isLast ? lastBotInset : 0
                             )
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .onTapGesture { detailCity = city }
+                            .onTapGesture {
+                                // When scrubbed, the priority is getting
+                                // back to "now" — tap anywhere returns to
+                                // the present. Detail sheet only opens when
+                                // we're already at present time.
+                                if store.scrubOffsetMinutes != 0 {
+                                    store.snapToNow()
+                                } else {
+                                    detailCity = city
+                                }
+                            }
                             .contextMenu {
                                 if city.id != store.homeCityId {
                                     Button("Make home") { store.makeHome(cityId: city.id) }
