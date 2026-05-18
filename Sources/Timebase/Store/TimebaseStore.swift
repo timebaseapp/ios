@@ -57,12 +57,29 @@ final class TimebaseStore {
             if scrubOffsetMinutes > bound {
                 scrubOffsetMinutes = bound
                 if oldValue < bound { Haptics.scrubCapHit() }
+                return
             } else if scrubOffsetMinutes < -bound {
                 scrubOffsetMinutes = -bound
                 if oldValue > -bound { Haptics.scrubCapHit() }
+                return
+            }
+            // Snap to 5-minute increments so sub-minute jitter doesn't make
+            // the pill flicker between values. Pinch / snapToNow / hour
+            // boundaries are already multiples of 5, so the snap is a no-op
+            // for those paths.
+            if snapScrubToFiveMinutes {
+                let snapped = (scrubOffsetMinutes / 5).rounded() * 5
+                if snapped != scrubOffsetMinutes {
+                    scrubOffsetMinutes = snapped
+                }
             }
         }
     }
+
+    /// When true (the default), `scrubOffsetMinutes` rounds to the nearest 5
+    /// after each set. Disable temporarily inside `pinchStep` so the
+    /// home-tz hour boundary lands exactly, then restore.
+    private var snapScrubToFiveMinutes: Bool = true
 
     static let scrubBoundMinutes: Double = 2 * 24 * 60
 
