@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct SettingsScreen: View {
     @Environment(TimebaseStore.self) private var store
@@ -105,6 +106,24 @@ struct SettingsScreen: View {
                         }
 
                         section(title: "DANGER") {
+                            Button {
+                                if let url = URL(string: UIApplication.openSettingsURLString) {
+                                    UIApplication.shared.open(url)
+                                }
+                            } label: {
+                                HStack {
+                                    Text("Disconnect Calendar")
+                                        .font(.system(size: 16))
+                                    Spacer()
+                                    Image(systemName: "arrow.up.right")
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundStyle(.secondary)
+                                }
+                                .padding(.horizontal, 16)
+                                .frame(height: 44)
+                            }
+                            .buttonStyle(.plain)
+
                             Button(role: .destructive) {
                                 showResetConfirm = true
                             } label: {
