@@ -64,20 +64,19 @@ struct EventCountdownLiveActivity: Widget {
             } compactLeading: {
                 GradientDot(date: context.state.start,
                             tzId: context.attributes.eventTzIdentifier)
-                    .frame(width: 16, height: 16)
+                    .frame(width: 14, height: 14)
             } compactTrailing: {
-                // Workaround for an Apple framework bug: `Text(_:style: .timer)`
-                // (and `Text(timerInterval:)`) expand excessively in Live
-                // Activity contexts, forcing the compact pill to fill the
-                // entire screen width. Confirmed on Apple Dev Forums #723316
-                // and jordibruin/Dynamic-Islands#4 — workaround is a hard
-                // `.frame(maxWidth:)` clamp + `.minimumScaleFactor`.
+                // Apple framework bug — Text(_:style: .timer) and
+                // Text(timerInterval:) request way more width than they
+                // render in Live Activity contexts, stretching the pill.
+                // Hard `.frame(maxWidth:)` clamp brings the trailing
+                // region down to its actual visual width.
                 Text(context.state.start, style: .timer)
                     .monospacedDigit()
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.white)
                     .multilineTextAlignment(.trailing)
-                    .frame(maxWidth: 56)
+                    .frame(maxWidth: 44)
                     .minimumScaleFactor(0.7)
             } minimal: {
                 GradientDot(date: context.state.start,
@@ -137,12 +136,19 @@ private struct LockScreenCard: View {
                         .font(.system(size: 18, weight: .medium))
                         .foregroundStyle(fg)
                         .lineLimit(2)
+                    // When the event is in the user's home timezone the
+                    // two strings are identical — just show one. Otherwise
+                    // show both so a remote-tz event reads at-a-glance.
+                    let homeTzId = context.attributes.homeTzIdentifier
+                    let eventTzId = context.attributes.eventTzIdentifier
                     HStack(spacing: 10) {
-                        Text(formatted(date: context.state.start,
-                                       tzId: context.attributes.homeTzIdentifier))
-                        Text("·")
-                        Text(formatted(date: context.state.start,
-                                       tzId: context.attributes.eventTzIdentifier))
+                        if homeTzId == eventTzId {
+                            Text(formatted(date: context.state.start, tzId: eventTzId))
+                        } else {
+                            Text(formatted(date: context.state.start, tzId: homeTzId))
+                            Text("·")
+                            Text(formatted(date: context.state.start, tzId: eventTzId))
+                        }
                     }
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundStyle(secondary)
