@@ -14,6 +14,15 @@ fastlane/report.xml
 fastlane/Preview.html
 fastlane/screenshots
 fastlane/test_output
+
+# App Review contact info is materialized from .env at runtime by the
+# push_metadata lane; never commit the resulting PII files.
+fastlane/metadata/review_information/first_name.txt
+fastlane/metadata/review_information/last_name.txt
+fastlane/metadata/review_information/email_address.txt
+fastlane/metadata/review_information/phone_number.txt
+fastlane/metadata/review_information/demo_user.txt
+fastlane/metadata/review_information/demo_password.txt
 *.p8
 *.mobileprovision
 .bundle/

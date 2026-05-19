@@ -268,6 +268,22 @@ end
 lane :push_metadata do
   api_key = asc_api_key
 
+  # Materialize review_information PII from .env. Those .txt files are
+  # gitignored so personal email / phone never enter the repo.
+  review_dir = "metadata/review_information"
+  Dir.mkdir(review_dir) unless Dir.exist?(review_dir)
+  {
+    "first_name.txt"    => ENV["REVIEW_FIRST_NAME"],
+    "last_name.txt"     => ENV["REVIEW_LAST_NAME"],
+    "email_address.txt" => ENV["REVIEW_EMAIL"],
+    "phone_number.txt"  => ENV["REVIEW_PHONE"],
+    "demo_user.txt"     => "",
+    "demo_password.txt" => ""
+  }.each do |name, val|
+    UI.user_error!("Missing required env var for #{name}. Add to fastlane/.env.") if val.nil? && name !~ /demo_/
+    File.write(File.join(review_dir, name), val.to_s)
+  end
+
   upload_to_app_store(
     api_key: api_key,
     app_identifier: APP_ID,
