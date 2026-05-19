@@ -43,6 +43,15 @@ enum EventCountdownActivityManager {
         }
     }
 
+    /// Ends every active EventCountdown Live Activity immediately. Used
+    /// by resetAll to clear stale lock-screen cards after a wipe.
+    static func endAll() async {
+        guard #available(iOS 16.2, *) else { return }
+        for activity in Activity<EventCountdownAttributes>.activities {
+            await activity.end(nil, dismissalPolicy: .immediate)
+        }
+    }
+
     @available(iOS 16.2, *)
     private static func startActivity(for event: UpcomingEvent, store: TimebaseStore) {
         let homeTz = store.homeCity?.timeZoneObject ?? .current

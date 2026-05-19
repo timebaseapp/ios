@@ -282,9 +282,21 @@ final class TimebaseStore {
         hasCompletedOnboarding = false
         scrubOffsetMinutes = 0
         upcomingEvents = []
+        // Forget that the user previously granted calendar access. iOS
+        // remembers the system-level permission grant (only the user can
+        // revoke it via Settings → Privacy → Calendars), but clearing our
+        // local state means the in-app permission UI in Onboarding shows
+        // again and no calendar-derived data leaks across the reset.
+        calendarAccessGranted = false
         isHydratingFromDisk = false
+        // End any running Live Activity so a stale countdown card doesn't
+        // float on the lock screen after the reset.
+        Task { await EventCountdownActivityManager.endAll() }
         UserDefaults.standard.removeObject(forKey: Self.storageKey)
         Self.sharedDefaults.removeObject(forKey: Self.storageKey)
+        // Also wipe the cached events the widget reads — otherwise the
+        // Up Next widget keeps showing the previous user's calendar.
+        Self.sharedDefaults.removeObject(forKey: "timebase.events.v1")
         cloudStore.clear()
         WidgetReload.requestAllTimelinesReload()
     }

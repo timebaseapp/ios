@@ -61,19 +61,21 @@ struct EventCountdownLiveActivity: Widget {
                     .padding(.top, 2)
                 }
             } compactLeading: {
-                // Dot on the left, countdown on the right — same layout
-                // Apple's own Timer Live Activity uses. The compact pill
-                // stays content-sized because Text(_:style: .timer) sizes
-                // to its CURRENT value (e.g. "2:18") rather than reserving
-                // the widest-format width.
+                // Dot + .fixedSize so the system reserves only natural
+                // width for this region — no growth, no max-format space.
                 GradientDot(date: context.state.start,
                             tzId: context.attributes.eventTzIdentifier)
                     .frame(width: 16, height: 16)
+                    .fixedSize()
             } compactTrailing: {
+                // Text(_:style: .timer) sizes to the current value, not
+                // the max format width. .fixedSize() locks in that natural
+                // width so the trailing region doesn't get over-allocated.
                 Text(context.state.start, style: .timer)
                     .monospacedDigit()
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(.white)
+                    .fixedSize()
             } minimal: {
                 GradientDot(date: context.state.start,
                             tzId: context.attributes.eventTzIdentifier)
@@ -160,9 +162,9 @@ private struct LockScreenCard: View {
                         .foregroundStyle(fg)
                 }
             }
+            .frame(maxWidth: .infinity)
             .padding(.horizontal, 18)
             .padding(.vertical, 14)
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .activityBackgroundTint(Color.clear)
         .activitySystemActionForegroundColor(fg)
