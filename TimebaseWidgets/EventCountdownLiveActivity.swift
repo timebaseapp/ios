@@ -8,9 +8,15 @@ import ActivityKit
 /// `Text(timerInterval:)`.
 @available(iOSApplicationExtension 16.2, *)
 struct EventCountdownLiveActivity: Widget {
+    /// Deep link target for any Live Activity tap (lock-screen card +
+    /// Dynamic Island expanded). Routes to the Up Next screen via
+    /// `DeepLinkRouter` rather than dropping the user on the world clock.
+    private static let tapDestination = URL(string: "timebase://upnext")!
+
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: EventCountdownAttributes.self) { context in
             LockScreenCard(context: context)
+                .widgetURL(Self.tapDestination)
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
@@ -28,6 +34,7 @@ struct EventCountdownLiveActivity: Widget {
                                 .lineLimit(1)
                         }
                     }
+                    .widgetURL(Self.tapDestination)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     // Same framework-bug workaround as compactTrailing —
@@ -60,6 +67,7 @@ struct EventCountdownLiveActivity: Widget {
                     }
                     .padding(.horizontal, 4)
                     .padding(.top, 2)
+                    .widgetURL(Self.tapDestination)
                 }
             } compactLeading: {
                 GradientDot(date: context.state.start,
