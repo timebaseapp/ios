@@ -1,0 +1,10 @@
+Timebase is a world clock + meeting planner. No account is required — the app works fully offline, using only the bundled city database and the user's iCloud account for cross-device sync.
+
+Optional integrations:
+• Calendar (EventKit): when the user grants permission, the app reads upcoming events from the system Calendar to display countdowns in the Up Next screen and the optional Live Activity.
+• WeatherKit: tapping any city opens a detail sheet that shows current weather conditions.
+• Live Activities + Dynamic Island: when a calendar event is within 1 hour, an activity appears showing the event title + ticking countdown.
+
+The app does not collect, transmit, or sell any user data. All persistence is via UserDefaults + the user's own iCloud KVS.
+
+To test the meeting planner: tap "Plan a meeting" from Up Next, add 2-3 cities as participants, tap a different participant to "anchor" the meeting time to their timezone.

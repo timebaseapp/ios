@@ -1,0 +1,1 @@
+shortcuts,spotlight,lock screen,icloud,recurring,gtd,snooze,alert,dawn,dusk,dynamic island,app icon
