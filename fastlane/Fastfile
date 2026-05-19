@@ -191,6 +191,22 @@ lane :release do |options|
 
   ensure_clean_xcode_project
 
+  # Provision Apple Distribution profiles for both bundle IDs into the
+  # local provisioning store — without these, xcodebuild falls back to
+  # Apple Development signing and the export step fails.
+  sigh(
+    api_key: api_key,
+    app_identifier: APP_ID,
+    team_id: TEAM_ID,
+    force: true
+  )
+  sigh(
+    api_key: api_key,
+    app_identifier: WIDGETS_ID,
+    team_id: TEAM_ID,
+    force: true
+  )
+
   if options[:version]
     increment_version_number(version_number: options[:version], xcodeproj: "Timebase.xcodeproj")
   end
