@@ -30,10 +30,9 @@ struct EventCountdownLiveActivity: Widget {
                     }
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    // Use `Text(timerInterval:)` — Apple's recommended API
-                    // for Live Activity countdowns. Renders + ticks
-                    // server-side through the system without us pushing
-                    // updates.
+                    // Same framework-bug workaround as compactTrailing —
+                    // an explicit frame keeps the expanded region from
+                    // bloating the layout.
                     if context.state.start > Date() {
                         Text(timerInterval: Date() ... context.state.start,
                              countsDown: true)
@@ -41,6 +40,8 @@ struct EventCountdownLiveActivity: Widget {
                             .font(.system(size: 20, weight: .heavy))
                             .foregroundStyle(.white)
                             .multilineTextAlignment(.trailing)
+                            .frame(maxWidth: 100)
+                            .minimumScaleFactor(0.7)
                     } else {
                         Text("now")
                             .font(.system(size: 20, weight: .heavy))
@@ -61,21 +62,23 @@ struct EventCountdownLiveActivity: Widget {
                     .padding(.top, 2)
                 }
             } compactLeading: {
-                // Dot + .fixedSize so the system reserves only natural
-                // width for this region — no growth, no max-format space.
                 GradientDot(date: context.state.start,
                             tzId: context.attributes.eventTzIdentifier)
                     .frame(width: 16, height: 16)
-                    .fixedSize()
             } compactTrailing: {
-                // Text(_:style: .timer) sizes to the current value, not
-                // the max format width. .fixedSize() locks in that natural
-                // width so the trailing region doesn't get over-allocated.
+                // Workaround for an Apple framework bug: `Text(_:style: .timer)`
+                // (and `Text(timerInterval:)`) expand excessively in Live
+                // Activity contexts, forcing the compact pill to fill the
+                // entire screen width. Confirmed on Apple Dev Forums #723316
+                // and jordibruin/Dynamic-Islands#4 — workaround is a hard
+                // `.frame(maxWidth:)` clamp + `.minimumScaleFactor`.
                 Text(context.state.start, style: .timer)
                     .monospacedDigit()
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(.white)
-                    .fixedSize()
+                    .multilineTextAlignment(.trailing)
+                    .frame(maxWidth: 56)
+                    .minimumScaleFactor(0.7)
             } minimal: {
                 GradientDot(date: context.state.start,
                             tzId: context.attributes.eventTzIdentifier)
@@ -148,14 +151,20 @@ private struct LockScreenCard: View {
                 // trailing edge of the card. minLength: 12 guarantees a
                 // little breathing room even with long titles.
                 Spacer(minLength: 12)
+                // Explicit frame here too — `Text(timerInterval:)` in
+                // Live Activity context reserves much wider intrinsic
+                // size than the rendered digits. With a clamp the layout
+                // is deterministic: 130pt fits "1:23:45" at 30pt heavy.
                 if context.state.start > Date() {
                     Text(timerInterval: Date() ... context.state.start,
                          countsDown: true)
                         .monospacedDigit()
                         .font(.system(size: 30, weight: .heavy))
                         .foregroundStyle(fg)
-                        .minimumScaleFactor(0.7)
+                        .multilineTextAlignment(.trailing)
+                        .minimumScaleFactor(0.6)
                         .lineLimit(1)
+                        .frame(maxWidth: 130, alignment: .trailing)
                 } else {
                     Text("now")
                         .font(.system(size: 30, weight: .heavy))
