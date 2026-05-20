@@ -4,7 +4,7 @@
 
 #### *A quieter way to think across timezones.*
 
-[**timebase.cc**](https://timebase.cc) &nbsp;·&nbsp; [App Store](https://apps.apple.com/app/id6770247920) &nbsp;·&nbsp; [@amrith](https://x.com/amrith)
+[**timebase.me**](https://timebase.me) &nbsp;·&nbsp; [App Store](https://apps.apple.com/app/id6770247920) &nbsp;·&nbsp; [@amrith](https://x.com/amrith)
 
 </div>
 
