@@ -107,18 +107,41 @@ struct SchedulerSheet: View {
                 vibeSection
                 durationSection
 
-                Button {
-                    Haptics.buttonPressed()
-                    openInCalendar()
-                } label: {
-                    Text("Continue to Calendar")
-                        .font(.system(size: 15, weight: .heavy))
-                        .padding(.horizontal, 26)
-                        .frame(height: 46)
+                VStack(spacing: 12) {
+                    // "Check with them" — share the proposed time so people
+                    // can confirm BEFORE it's committed to a calendar. Shown
+                    // once there are ≥2 cities (one city = nothing to
+                    // coordinate). Doesn't require a meeting title.
+                    if participants.count >= 2 {
+                        ShareLink(item: shareText) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "paperplane")
+                                    .font(.system(size: 13, weight: .semibold))
+                                Text("Check with them")
+                                    .font(.system(size: 15, weight: .semibold))
+                            }
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 22)
+                            .frame(height: 42)
+                            .overlay(
+                                Capsule().stroke(.primary.opacity(0.18), lineWidth: 1)
+                            )
+                        }
+                    }
+
+                    Button {
+                        Haptics.buttonPressed()
+                        openInCalendar()
+                    } label: {
+                        Text("Continue to Calendar")
+                            .font(.system(size: 15, weight: .heavy))
+                            .padding(.horizontal, 26)
+                            .frame(height: 46)
+                    }
+                    .buttonStyle(SkeuomorphicPillButtonStyle())
+                    .disabled(title.isEmpty || participants.isEmpty)
+                    .opacity((title.isEmpty || participants.isEmpty) ? 0.5 : 1)
                 }
-                .buttonStyle(SkeuomorphicPillButtonStyle())
-                .disabled(title.isEmpty || participants.isEmpty)
-                .opacity((title.isEmpty || participants.isEmpty) ? 0.5 : 1)
                 .padding(.top, 4)
                 .padding(.bottom, 40)
             }
@@ -460,6 +483,112 @@ struct SchedulerSheet: View {
             return ("working", .green, "☀")
         default:                       // 18 ..< 23
             return ("winding down", .orange, "🌇")
+        }
+    }
+
+    // MARK: - Share text ("Check with them")
+
+    /// The text put on the iOS share sheet. Two tones, chosen in
+    /// Settings → Preferences → Share style.
+    private var shareText: String {
+        guard let anchor = anchorCity else { return "" }
+        // Anchor city leads; the rest follow in participant order.
+        let ordered = [anchor] + participants.filter { $0.id != anchor.id }
+        let anchorDay = calendarDayKey(for: anchor)
+        let titlePrefix = title.isEmpty ? "" : "\(title) — "
+
+        switch store.settings.shareStyle {
+        case .cityByCity:
+            var datePhrase = Date.FormatStyle.dateTime
+                .weekday(.abbreviated).month(.abbreviated).day()
+            datePhrase.timeZone = anchor.timeZoneObject
+            var lines = ["\(titlePrefix)does \(datePhrase.format(meetingTime)) work?", ""]
+            for c in ordered {
+                var line = "\(shareGlyph(for: c)) \(c.name) · \(cleanTime(for: c))"
+                if calendarDayKey(for: c) != anchorDay {
+                    line += " \(weekdayAbbr(for: c))"
+                }
+                lines.append(line)
+            }
+            return lines.joined(separator: "\n")
+
+        case .oneSentence:
+            var datePhrase = Date.FormatStyle.dateTime
+                .weekday(.wide).month(.wide).day()
+            datePhrase.timeZone = anchor.timeZoneObject
+            var sentence = "\(titlePrefix)how's \(datePhrase.format(meetingTime)) "
+                + "at \(cleanTime(for: anchor)) in \(anchor.name)?"
+            let others = Array(ordered.dropFirst())
+            if !others.isEmpty {
+                let pieces = others.map { c -> String in
+                    var p = "\(cleanTime(for: c)) in \(c.name)"
+                    if calendarDayKey(for: c) != anchorDay {
+                        p += " (\(weekdayAbbr(for: c)))"
+                    }
+                    return p
+                }
+                sentence += " That's " + naturalList(pieces) + "."
+            }
+            return sentence
+        }
+    }
+
+    /// 🌙 ☕ ☀️ 🌇 — forces the emoji presentation of the sun glyph so it
+    /// renders in colour in a chat, not as a black text-style character.
+    private func shareGlyph(for city: City) -> String {
+        let g = vibe(for: city).glyph
+        return g == "☀" ? "☀️" : g
+    }
+
+    /// "8 AM" / "8:30 AM" / "20:00" — drops the ":00" on whole hours in
+    /// 12-hour mode; keeps it in 24-hour mode where a bare hour reads
+    /// oddly. Respects the user's hour preference.
+    private func cleanTime(for city: City) -> String {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = city.timeZoneObject
+        let comps = cal.dateComponents([.hour, .minute], from: meetingTime)
+        let h = comps.hour ?? 0, m = comps.minute ?? 0
+
+        let use24: Bool
+        switch store.settings.hourPreference {
+        case .on:  use24 = true
+        case .off: use24 = false
+        case .system:
+            let cycle = Locale.current.hourCycle
+            use24 = cycle == .zeroToTwentyThree || cycle == .oneToTwentyFour
+        }
+
+        if use24 {
+            return String(format: "%d:%02d", h, m)
+        }
+        let period = h < 12 ? "AM" : "PM"
+        let h12 = h % 12 == 0 ? 12 : h % 12
+        return m == 0 ? "\(h12) \(period)"
+                      : "\(h12):\(String(format: "%02d", m)) \(period)"
+    }
+
+    /// YYYY-MM-DD in the city's timezone — used to detect a date rollover.
+    private func calendarDayKey(for city: City) -> String {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = city.timeZoneObject
+        let c = cal.dateComponents([.year, .month, .day], from: meetingTime)
+        return "\(c.year ?? 0)-\(c.month ?? 0)-\(c.day ?? 0)"
+    }
+
+    private func weekdayAbbr(for city: City) -> String {
+        var fmt = Date.FormatStyle.dateTime.weekday(.abbreviated)
+        fmt.timeZone = city.timeZoneObject
+        return fmt.format(meetingTime)
+    }
+
+    /// "a" → "a", "a, b" → "a and b", "a, b, c" → "a, b, and c".
+    private func naturalList(_ items: [String]) -> String {
+        switch items.count {
+        case 0:  return ""
+        case 1:  return items[0]
+        case 2:  return "\(items[0]) and \(items[1])"
+        default: return items.dropLast().joined(separator: ", ")
+                        + ", and " + (items.last ?? "")
         }
     }
 

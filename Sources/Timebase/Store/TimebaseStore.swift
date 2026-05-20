@@ -33,6 +33,20 @@ enum HourPreference: String, Codable, CaseIterable {
     }
 }
 
+/// How the "Check with them" share text reads when proposing a meeting
+/// time. `cityByCity` is a per-city list with time-of-day glyphs;
+/// `oneSentence` is a single flowing line.
+enum ShareStyle: String, Codable, CaseIterable {
+    case cityByCity, oneSentence
+
+    var label: String {
+        switch self {
+        case .cityByCity:  return "City by city"
+        case .oneSentence: return "One sentence"
+        }
+    }
+}
+
 struct UserSettings: Codable {
     var hourPreference: HourPreference = .system
     var appearance: Appearance = .system
@@ -50,6 +64,8 @@ struct UserSettings: Codable {
     /// system prompt at 3×/365 days regardless.) Persisted + iCloud-
     /// synced so a review on one device suppresses the ask on others.
     var hasRequestedReview: Bool = false
+    /// Tone of the scheduler's "Check with them" share text.
+    var shareStyle: ShareStyle = .cityByCity
 }
 
 /// The moments at which an App Store review prompt is considered.

@@ -82,6 +82,14 @@ struct SettingsScreen: View {
                                     onPick: { store.settings.appearance = $0 }
                                 )
                             }
+                            preferenceRow("Share style") {
+                                inlineMenu(
+                                    label: store.settings.shareStyle.label,
+                                    options: ShareStyle.allCases.map { ($0, $0.label) },
+                                    isSelected: { $0 == store.settings.shareStyle },
+                                    onPick: { store.settings.shareStyle = $0 }
+                                )
+                            }
                             preferenceRow("Calendar") {
                                 if store.calendarAccessGranted {
                                     Text("Connected")
