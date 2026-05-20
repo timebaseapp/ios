@@ -42,6 +42,24 @@ struct UserSettings: Codable {
     /// they turn auto-rotate OFF, we restore THIS one so their explicit
     /// choice survives.
     var lastUserPickedIcon: String?
+    /// Number of times the app has been launched. Used as a soft
+    /// engagement gate for the App Store review prompt.
+    var launchCount: Int = 0
+    /// Set true the first time we ask for an App Store review, so we
+    /// never ask more than once ourselves. (iOS also hard-caps the
+    /// system prompt at 3×/365 days regardless.) Persisted + iCloud-
+    /// synced so a review on one device suppresses the ask on others.
+    var hasRequestedReview: Bool = false
+}
+
+/// The moments at which an App Store review prompt is considered.
+enum ReviewTrigger {
+    /// The user just saved a planned meeting to their calendar — a
+    /// completed, valuable interaction. Fires regardless of launch count.
+    case meetingScheduled
+    /// The user has a full 8-city world clock and has opened the app at
+    /// least 3 times — a clearly engaged user.
+    case engagement
 }
 
 @Observable
@@ -115,6 +133,12 @@ final class TimebaseStore {
     /// Triggered when the easter-egg quick action fires. Briefly shows a
     /// time-of-day greeting overlay.
     var greeting: String?
+
+    /// Transient — trips when an App Store review prompt is warranted.
+    /// `ClockListView` watches this, calls SwiftUI's `requestReview`, and
+    /// resets it. Not persisted (the *decision* is persisted via
+    /// `settings.hasRequestedReview`).
+    var pendingReviewPrompt = false
     var upcomingEvents: [UpcomingEvent] = []
     var calendarAccessGranted = false
 
@@ -154,7 +178,32 @@ final class TimebaseStore {
     func bootstrap() async {
         cityDatabase = City.loadBundled()
         load()
+        settings.launchCount += 1   // persists via settings.didSet
         await refreshEvents()
+        // Catches the "user already has 8 cities, now on their 3rd+
+        // launch" path — the add(city:) hook only covers adding the 8th.
+        maybeRequestReview(trigger: .engagement)
+    }
+
+    /// Decides whether to surface an App Store review prompt for the
+    /// given trigger. If warranted, marks the request consumed (so we
+    /// never ask twice) and trips `pendingReviewPrompt` for the view
+    /// layer to act on. First eligible trigger wins; the other is then
+    /// permanently suppressed.
+    func maybeRequestReview(trigger: ReviewTrigger) {
+        guard !settings.hasRequestedReview else { return }
+        let eligible: Bool
+        switch trigger {
+        case .meetingScheduled:
+            // Scheduling a meeting is itself the positive signal — no
+            // launch-count gate needed.
+            eligible = true
+        case .engagement:
+            eligible = cities.count >= Self.maxCities && settings.launchCount >= 3
+        }
+        guard eligible else { return }
+        settings.hasRequestedReview = true   // persists via didSet
+        pendingReviewPrompt = true
     }
 
     #if DEBUG
@@ -180,6 +229,9 @@ final class TimebaseStore {
         cities.append(city)
         if homeCityId == nil { homeCityId = city.id }
         save()
+        // Adding the 8th city on an engaged session may warrant a review
+        // prompt — the gate inside handles the launch-count check.
+        maybeRequestReview(trigger: .engagement)
     }
 
     /// Picks the city closest to the given coordinates from the bundled

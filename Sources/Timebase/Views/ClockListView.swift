@@ -1,10 +1,15 @@
 import SwiftUI
+import StoreKit
 
 struct ClockListView: View {
     @Environment(TimebaseStore.self) private var store
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.requestReview) private var requestReview
     @State private var tick = Date()
     @State private var detailCity: City?
+    /// Local guard so the review prompt fires at most once per app run,
+    /// even if both the .task and .onChange paths race.
+    @State private var reviewFiredThisSession = false
 
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
@@ -105,7 +110,27 @@ struct ClockListView: View {
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
         }
+        // App Store review prompt — fired from here because ClockListView
+        // is always mounted (it's a page in the root TabView), so the
+        // prompt surfaces even if the trigger happened on another tab.
+        .task { fireReviewIfPending() }
+        .onChange(of: store.pendingReviewPrompt) { _, pending in
+            if pending { fireReviewIfPending() }
+        }
         }   // end GeometryReader
+    }
+
+    /// If the store has flagged a review as warranted, surface Apple's
+    /// system prompt after a short beat (so it doesn't feel mashed onto
+    /// whatever action triggered it).
+    private func fireReviewIfPending() {
+        guard store.pendingReviewPrompt, !reviewFiredThisSession else { return }
+        reviewFiredThisSession = true
+        store.pendingReviewPrompt = false
+        Task {
+            try? await Task.sleep(for: .milliseconds(1200))
+            requestReview()
+        }
     }
 
     private var scrubDeltaText: String {

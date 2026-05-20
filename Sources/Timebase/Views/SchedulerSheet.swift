@@ -58,6 +58,11 @@ struct SchedulerSheet: View {
                 if action == .saved {
                     Task {
                         await store.refreshEvents()
+                        // Saving a planned meeting is a completed, valuable
+                        // interaction — the strongest moment to ask for a
+                        // review. ClockListView watches pendingReviewPrompt
+                        // and surfaces the system prompt.
+                        store.maybeRequestReview(trigger: .meetingScheduled)
                         dismiss()
                     }
                 }
