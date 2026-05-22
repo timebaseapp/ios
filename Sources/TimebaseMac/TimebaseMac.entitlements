@@ -2,15 +2,20 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>com.apple.security.app-sandbox</key>
-    <true/>
-    <key>com.apple.security.application-groups</key>
-    <array>
-        <string>group.cc.timebase.ios</string>
-    </array>
-    <key>com.apple.developer.ubiquity-kvstore-identifier</key>
-    <string>$(TeamIdentifierPrefix)cc.timebase.ios</string>
-    <key>com.apple.security.personal-information.calendars</key>
-    <true/>
+    <!--
+        DEV-ONLY entitlements: empty, so an unsigned local build can launch.
+
+        Before App Store submission, restore the full set:
+
+            com.apple.security.app-sandbox            true
+            com.apple.security.application-groups     [group.cc.timebase.ios]
+            com.apple.developer.ubiquity-kvstore-identifier
+                                                      $(TeamIdentifierPrefix)cc.timebase.ios
+            com.apple.security.personal-information.calendars
+                                                      true
+
+        Those entitlements only work with a real team signature; an ad-hoc
+        or unsigned binary gets SIGTERM'd by the sandbox at launch.
+    -->
 </dict>
 </plist>
