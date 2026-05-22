@@ -11,7 +11,7 @@ WORLD CLOCK
 • Time-of-day gradients that flow with the hour, anywhere on Earth
 • Fluid parallax gradients that respond to how you hold your phone
 • Scrub vertically through the day — every clock moves together
-• Tap any city for weather, daylight, and the local date
+• Tap any city for daylight and the local date
 
 MEETING PLANNER
 • Pick participants by city, find a time that works for everyone

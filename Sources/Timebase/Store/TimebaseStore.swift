@@ -160,7 +160,7 @@ final class TimebaseStore {
 
     // MARK: - Resources
     private(set) var cityDatabase: [City] = []
-    private let calendarService = EventKitService()
+    private let calendarService = EventKitService.shared
     private let cloudStore = CloudKVStore()
 
     var upcomingEventsCount: Int {
@@ -195,6 +195,7 @@ final class TimebaseStore {
         cityDatabase = City.loadBundled()
         load()
         settings.launchCount += 1   // persists via settings.didSet
+        await calendarService.warmUp()
         await refreshEvents()
         // Catches the "user already has 8 cities, now on their 3rd+
         // launch" path — the add(city:) hook only covers adding the 8th.

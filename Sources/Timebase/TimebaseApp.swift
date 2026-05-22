@@ -4,7 +4,6 @@ import SwiftUI
 struct TimebaseApp: App {
     @State private var store = TimebaseStore()
     @State private var motion = MotionStore()
-    @StateObject private var weather = WeatherStore()
     @Environment(\.scenePhase) private var scenePhaseEnvironment
 
     var body: some Scene {
@@ -12,7 +11,6 @@ struct TimebaseApp: App {
             RootView()
                 .environment(store)
                 .environment(motion)
-                .environmentObject(weather)
                 .preferredColorScheme(store.settings.appearance.preferred)
                 .task {
                     #if DEBUG
@@ -26,7 +24,6 @@ struct TimebaseApp: App {
                     Greeting.updateDynamicShortcut()
                     motion.start()
                     await SpotlightIndexer.reindex(cities: store.cities)
-                    await weather.refreshAll(cities: store.cities)
                 }
                 .onChange(of: scenePhaseEnvironment) { _, phase in
                     switch phase {

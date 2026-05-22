@@ -7,7 +7,6 @@ struct CityRow: View {
     var bottomContentInset: CGFloat = 0
     @Environment(TimebaseStore.self) private var store
     @Environment(MotionStore.self) private var motion
-    @EnvironmentObject private var weather: WeatherStore
     @Environment(\.colorScheme) private var colorScheme
 
     private var displayName: String {
@@ -74,9 +73,6 @@ struct CityRow: View {
                     endPoint:   UnitPoint(x: 0.5 - motion.roll * 0.18,
                                           y: 1.0 - motion.pitch * 0.10)
                 )
-                if let w = weather.snapshot(for: city) {
-                    WeatherEffectOverlay(condition: w.condition, tint: fg)
-                }
                 Image("grain")
                     .resizable(resizingMode: .tile)
                     .blendMode(.softLight)

@@ -1,9 +1,42 @@
 import Foundation
 import EventKit
 
+/// Carries a non-Sendable value across a concurrency boundary — used only to
+/// hand a freshly-built EKEventStore back from a background task. EKEventStore
+/// is safe to create off-thread and use anywhere; it's just not annotated
+/// `Sendable`.
+private struct SendableBox<T>: @unchecked Sendable { let value: T }
+
 @MainActor
 final class EventKitService {
-    let store = EKEventStore()
+    /// One service — and one EKEventStore — for the whole app; Apple
+    /// recommends a single store for an app's lifetime.
+    static let shared = EventKitService()
+    private init() {}
+
+    private var _store: EKEventStore?
+
+    /// The app's EKEventStore. `EKEventStore()`'s initializer opens the
+    /// Calendar database from disk, so `warmUp()` builds it ahead of time on
+    /// a background thread and this getter then just returns the cached
+    /// instance. The on-demand path is a fallback for the (practically
+    /// impossible) case of a call before warm-up finishes.
+    var store: EKEventStore {
+        if let s = _store { return s }
+        let s = EKEventStore()
+        _store = s
+        return s
+    }
+
+    /// Pre-builds the EKEventStore off the main thread. Call once, early
+    /// (from `TimebaseStore.bootstrap()`).
+    func warmUp() async {
+        guard _store == nil else { return }
+        let built = await Task.detached(priority: .userInitiated) {
+            SendableBox(value: EKEventStore())
+        }.value
+        if _store == nil { _store = built.value }
+    }
 
     var hasAccess: Bool {
         if #available(iOS 17, *) {

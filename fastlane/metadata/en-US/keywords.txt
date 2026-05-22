@@ -1,1 +1,1 @@
-planner,scheduler,calendar,siri,jetlag,travel,international,daylight,converter,global,event,alarm
+scheduler,meeting,widget,difference,current,local,event,daylight,global,international,travel,jetlag

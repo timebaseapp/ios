@@ -1,10 +1,8 @@
 import SwiftUI
-import WeatherKit
 
 struct CityDetailSheet: View {
     let city: City
     @Environment(TimebaseStore.self) private var store
-    @EnvironmentObject private var weather: WeatherStore
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dismiss) private var dismiss
 
@@ -37,10 +35,6 @@ struct CityDetailSheet: View {
 
                 DayBarView(tz: tz, latitude: city.latitude, longitude: city.longitude)
 
-                if let current = weather.snapshot(for: city) {
-                    weatherRow(current)
-                }
-
                 Divider()
 
                 VStack(alignment: .leading, spacing: 12) {
@@ -71,36 +65,6 @@ struct CityDetailSheet: View {
             }
             .padding(24)
         }
-        .task(id: city.id) {
-            await weather.refresh(for: city)
-        }
-    }
-
-    @ViewBuilder
-    private func weatherRow(_ current: CurrentWeather) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: current.symbolName)
-                .font(.system(size: 28, weight: .regular))
-                .symbolRenderingMode(.hierarchical)
-                .frame(width: 36, alignment: .leading)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(formattedTemperature(current.temperature))
-                    .font(.system(size: 17, weight: .regular))
-                    .monospacedDigit()
-                Text(current.condition.description)
-                    .font(.system(size: 13))
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
-        }
-        .padding(.vertical, 4)
-    }
-
-    private func formattedTemperature(_ m: Measurement<UnitTemperature>) -> String {
-        let f = MeasurementFormatter()
-        f.unitOptions = [.temperatureWithoutUnit]
-        f.numberFormatter.maximumFractionDigits = 0
-        return f.string(from: m)
     }
 
     private func factRow(label: String, value: String) -> some View {

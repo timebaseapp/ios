@@ -12,7 +12,7 @@ struct EventDetailSheet: View {
 
     @State private var event: EKEvent?
     @State private var editingEvent: EKEvent?
-    private let calendarService = EventKitService()
+    private let calendarService = EventKitService.shared
 
     var body: some View {
         ZStack {

@@ -26,7 +26,7 @@ struct SchedulerSheet: View {
 
     @AppStorage("timebase.scheduler.anchorHintDismissed") private var anchorHintDismissed = false
 
-    private let calendarService = EventKitService()
+    private let calendarService = EventKitService.shared
     private let durations = [15, 30, 45, 60, 90, 120]
 
     var body: some View {

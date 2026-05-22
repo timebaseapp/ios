@@ -1,1 +1,1 @@
-gmt,utc,est,pst,conversion,difference,gap,today,tomorrow,weekday,weekend,day,noon,midweek,am pm
+gmt,utc,est,pst,conversion,dst,cst,gap,today,tomorrow,weekday,weekend,day,noon,midweek,am pm

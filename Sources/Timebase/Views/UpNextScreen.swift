@@ -9,16 +9,6 @@ struct UpNextScreen: View {
     @State private var showScheduler = false
     @State private var selectedEvent: UpcomingEvent?
 
-    // Custom pull-to-refresh state. SwiftUI's `.refreshable` only gives the
-    // system spinner — to show a branded gradient orb we track the scroll
-    // over-scroll ourselves and drive the refresh from a threshold crossing.
-    @State private var pullOffset: CGFloat = 0
-    @State private var isRefreshing = false
-    @State private var pullArmed = true
-
-    private let scrollSpace = "upnext.scroll"
-    private let pullThreshold: CGFloat = 86
-
     var body: some View {
         ZStack {
             BackgroundLayer()
@@ -46,20 +36,6 @@ struct UpNextScreen: View {
                 .padding(.bottom, 18)
 
                 ScrollView {
-                    // Zero-height marker — its minY in the scroll coordinate
-                    // space is the live pull offset (positive = over-scrolled
-                    // at the top, i.e. the user is pulling down).
-                    Color.clear
-                        .frame(height: 0)
-                        .background(
-                            GeometryReader { geo in
-                                Color.clear.preference(
-                                    key: UpNextScrollOffsetKey.self,
-                                    value: geo.frame(in: .named(scrollSpace)).minY
-                                )
-                            }
-                        )
-
                     LazyVStack(spacing: 12) {
                         UpNextSection(onTap: { event in
                             Haptics.buttonPressed()
@@ -78,24 +54,11 @@ struct UpNextScreen: View {
                         .buttonStyle(SkeuomorphicPillButtonStyle())
                         .padding(.top, 18)
                     }
-                    // While refreshing, hold the list down so the orb has
-                    // clear space and never overlaps the first card.
-                    .padding(.top, isRefreshing ? 54 : 0)
                     .padding(.horizontal, 16)
                     .padding(.bottom, 40)
                 }
-                .coordinateSpace(name: scrollSpace)
-                .onPreferenceChange(UpNextScrollOffsetKey.self) { value in
-                    pullOffset = value
-                    handlePull()
-                }
-                .overlay(alignment: .top) {
-                    RefreshOrb(progress: pullProgress,
-                               isRefreshing: isRefreshing,
-                               hour: homeHour)
-                        .offset(y: orbY)
-                        .opacity((isRefreshing || pullOffset > 2) ? 1 : 0)
-                        .allowsHitTesting(false)
+                .refreshable {
+                    await store.refreshEvents()
                 }
             }
         }
@@ -115,115 +78,6 @@ struct UpNextScreen: View {
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
-    }
-
-    // MARK: - Pull-to-refresh
-
-    /// 0 → 1 as the pull approaches the trigger threshold.
-    private var pullProgress: Double {
-        Double(min(1, max(0, pullOffset / pullThreshold)))
-    }
-
-    /// Vertical position of the orb. While refreshing it sits in the
-    /// held-open 54pt band; while pulling it rises with the over-scroll.
-    private var orbY: CGFloat {
-        isRefreshing ? 12 : max(0, pullOffset / 2 - 15)
-    }
-
-    /// Current fractional hour at the home city — sets the resting orb's
-    /// time-of-day color.
-    private var homeHour: Double {
-        var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = store.homeCity?.timeZoneObject ?? .current
-        let c = cal.dateComponents([.hour, .minute], from: Date())
-        return Double(c.hour ?? 0) + Double(c.minute ?? 0) / 60
-    }
-
-    /// Called on every scroll-offset change. Re-arms when the pull settles
-    /// back near zero, and fires the refresh once when the threshold is
-    /// crossed — the `pullArmed` flag stops it looping if the finger is
-    /// still held past the threshold after a refresh completes.
-    private func handlePull() {
-        guard !isRefreshing else { return }
-        if pullOffset < 10 { pullArmed = true }
-        if pullArmed && pullOffset > pullThreshold {
-            pullArmed = false
-            triggerRefresh()
-        }
-    }
-
-    private func triggerRefresh() {
-        Haptics.buttonPressed()
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-            isRefreshing = true
-        }
-        Task {
-            let start = Date()
-            await store.refreshEvents()
-            // Minimum on-screen time so the orb doesn't flash on a fast
-            // refresh — let it spin through at least one partial "day".
-            let elapsed = Date().timeIntervalSince(start)
-            if elapsed < 0.9 {
-                try? await Task.sleep(for: .seconds(0.9 - elapsed))
-            }
-            Haptics.refreshDone()
-            withAnimation(.easeOut(duration: 0.3)) {
-                isRefreshing = false
-            }
-        }
-    }
-}
-
-/// Carries the scroll over-scroll distance up from the ScrollView.
-private struct UpNextScrollOffsetKey: PreferenceKey {
-    static let defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
-    }
-}
-
-/// The branded pull-to-refresh indicator: a small orb filled with the
-/// time-of-day gradient. At rest it shows the home city's current hour and
-/// scales in with the pull; while refreshing it cycles the gradient through
-/// a full 24-hour day — sunrise, noon, dusk, night — on a 2.4s loop.
-private struct RefreshOrb: View {
-    let progress: Double
-    let isRefreshing: Bool
-    let hour: Double
-    @Environment(\.colorScheme) private var scheme
-
-    var body: some View {
-        Group {
-            if isRefreshing {
-                TimelineView(.animation) { tl in
-                    let secs = tl.date.timeIntervalSinceReferenceDate
-                    let phase = (secs.truncatingRemainder(dividingBy: 2.4) / 2.4) * 24
-                    orb(hour: phase)
-                }
-            } else {
-                orb(hour: hour)
-                    .scaleEffect(0.4 + 0.6 * progress)
-            }
-        }
-        .frame(width: 34, height: 34)
-    }
-
-    private func orb(hour: Double) -> some View {
-        let grad = TimeColor.backgroundGradient(forHour: hour, scheme: scheme)
-        return Circle()
-            .fill(LinearGradient(colors: grad, startPoint: .top, endPoint: .bottom))
-            // Top-left highlight so it reads as a lit sphere, not a flat disc.
-            .overlay(
-                Circle().fill(
-                    RadialGradient(
-                        colors: [.white.opacity(0.5), .white.opacity(0)],
-                        center: UnitPoint(x: 0.34, y: 0.30),
-                        startRadius: 0, endRadius: 17)
-                )
-            )
-            .overlay(Circle().stroke(.primary.opacity(0.10), lineWidth: 0.5))
-            .frame(width: 30, height: 30)
-            .shadow(color: (grad.last ?? .clear).opacity(0.55), radius: 7, y: 1)
     }
 }
 
@@ -257,7 +111,7 @@ private struct UpNextSection: View {
             Button {
                 Task { await store.requestCalendarAccess() }
             } label: {
-                Text("Allow")
+                Text("Continue")
                     .font(.system(size: 13, weight: .heavy))
                     .padding(.horizontal, 20)
                     .frame(height: 38)
