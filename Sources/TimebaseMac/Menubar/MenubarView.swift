@@ -1,9 +1,8 @@
 import SwiftUI
 
 /// The menubar popover — the daily-driver surface. A calm header, up to four
-/// chosen cities as gradient strips, the next event ticking down, and a
-/// footer with quick actions (open the main window, plan a meeting,
-/// customize which cities show here, settings).
+/// chosen cities as gradient strips, the next event with a Timebase-y
+/// countdown (`5d 10h 22m 35s`), and a footer with quick actions.
 struct MenubarView: View {
     @Environment(TimebaseMacStore.self) private var store
     @Environment(\.openWindow) private var openWindow
@@ -114,9 +113,6 @@ struct MenubarView: View {
                 .font(.system(size: 14, weight: .semibold))
                 .lineLimit(1)
             countdown(event)
-                .font(.system(size: 22, weight: .heavy))
-                .monospacedDigit()
-                .lineLimit(1)
         }
         .foregroundStyle(fg)
         .padding(12)
@@ -130,18 +126,25 @@ struct MenubarView: View {
     @ViewBuilder
     private func countdown(_ event: UpcomingEvent) -> some View {
         if event.startDate > tick {
-            Text(timerInterval: tick ... event.startDate, countsDown: true)
+            TimelineView(.periodic(from: .now, by: 1.0)) { context in
+                Text(Countdown.format(to: event.startDate, from: context.date))
+                    .font(.system(size: 20, weight: .heavy))
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+            }
         } else if event.endDate > tick {
-            Text("now")
+            Text("Happening now")
+                .font(.system(size: 18, weight: .heavy))
         } else {
-            Text("ended")
+            Text("Ended")
+                .font(.system(size: 18, weight: .heavy))
         }
     }
 
     private func eventTimeLabel(_ event: UpcomingEvent) -> String {
-        let home = ClockMath.timeString(date: event.startDate, tz: store.homeTimeZone,
-                                        pref: store.settings.hourPreference)
-        return home
+        ClockMath.timeString(date: event.startDate, tz: store.homeTimeZone,
+                             pref: store.settings.hourPreference)
     }
 
     // MARK: - Footer

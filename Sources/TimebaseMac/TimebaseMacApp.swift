@@ -28,6 +28,12 @@ struct TimebaseMacApp: App {
                 .frame(minWidth: 720, minHeight: 480)
         }
         .defaultSize(width: 960, height: 640)
+        .commands {
+            CommandGroup(after: .toolbar) {
+                Button("Snap to Now") { store.snapToNow() }
+                    .keyboardShortcut("0", modifiers: .command)
+            }
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { store.bootstrap() }
         }
