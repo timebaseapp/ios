@@ -39,21 +39,41 @@ final class TimebaseMacStore {
     /// set, otherwise home + first 3 non-home cities by UTC offset. Always
     /// includes home when home exists.
     var menubarCities: [City] {
-        let ordered = tzSorted(cities)
+        let byId = Dictionary(uniqueKeysWithValues: cities.map { ($0.id, $0) })
+        return effectiveMenubarCityIds.compactMap { byId[$0] }
+    }
+
+    /// The IDs the menubar is *effectively* showing — the stored array if the
+    /// wearer has customized, otherwise the implicit default (home + first 3
+    /// non-home by tz). This is what the customize sheet should read so
+    /// checkboxes reflect what's actually on screen.
+    var effectiveMenubarCityIds: [String] {
         if !menubarCityIds.isEmpty {
-            let byId = Dictionary(uniqueKeysWithValues: cities.map { ($0.id, $0) })
-            return menubarCityIds.compactMap { byId[$0] }
+            // Stored selection wins, capped at menubarCityCap. Home is always
+            // first if present.
+            var out: [String] = []
+            if let homeId = homeCityId, cities.contains(where: { $0.id == homeId }) {
+                out.append(homeId)
+            }
+            for id in menubarCityIds where id != homeCityId {
+                if out.count >= Self.menubarCityCap { break }
+                if cities.contains(where: { $0.id == id }) {
+                    out.append(id)
+                }
+            }
+            return out
         }
         // Default: home + first 3 non-home by tz, capped at menubarCityCap.
-        var defaultPick: [City] = []
+        let ordered = tzSorted(cities)
+        var out: [String] = []
         if let home = ordered.first(where: { $0.id == homeCityId }) {
-            defaultPick.append(home)
+            out.append(home.id)
         }
         for c in ordered where c.id != homeCityId {
-            if defaultPick.count >= Self.menubarCityCap { break }
-            defaultPick.append(c)
+            if out.count >= Self.menubarCityCap { break }
+            out.append(c.id)
         }
-        return defaultPick
+        return out
     }
 
     // MARK: - Scrub state (for the main window)
@@ -205,17 +225,28 @@ final class TimebaseMacStore {
         menubarCityIds = capped
     }
 
+    /// Whether a city is *effectively* shown in the menubar — reads from the
+    /// effective set, not the raw stored array. Reflects what's on screen.
     func isMenubarCityPinned(_ id: String) -> Bool {
-        menubarCityIds.contains(id)
+        effectiveMenubarCityIds.contains(id)
     }
 
+    /// Toggles a city's presence in the menubar. Materializes the implicit
+    /// default into the stored array on first edit so the change reads as
+    /// the wearer expects: checking/unchecking starts from what's already
+    /// on screen, not from an empty list.
     func toggleMenubarCity(_ id: String) {
-        if menubarCityIds.contains(id) {
-            menubarCityIds.removeAll { $0 == id }
+        guard id != homeCityId else { return }
+        var current = menubarCityIds.isEmpty ? effectiveMenubarCityIds : menubarCityIds
+        if current.contains(id) {
+            current.removeAll { $0 == id }
         } else {
-            guard menubarCityIds.count < Self.menubarCityCap else { return }
-            menubarCityIds.append(id)
+            // Home occupies one slot implicitly when present.
+            let cap = Self.menubarCityCap
+            if current.count >= cap { return }
+            current.append(id)
         }
+        menubarCityIds = current
     }
 
     // MARK: - Scrub

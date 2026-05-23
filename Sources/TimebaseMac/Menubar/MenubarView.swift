@@ -1,14 +1,22 @@
 import SwiftUI
+import AppKit
 
 /// The menubar popover — the daily-driver surface. A calm header, up to four
 /// chosen cities as gradient strips, the next event with a Timebase-y
 /// countdown (`5d 10h 22m 35s`), and a footer with quick actions.
+///
+/// While the popover is open, two-finger scroll over it scrubs time —
+/// `NSEvent.addLocalMonitorForEvents(.scrollWheel)` is installed on appear
+/// and removed on disappear, so the scrub is scoped to the popover's
+/// lifetime. The scrubbed state lives in the shared store, so opening the
+/// main window after a menubar scrub shows the same offset.
 struct MenubarView: View {
     @Environment(TimebaseMacStore.self) private var store
     @Environment(\.openWindow) private var openWindow
 
     @State private var tick = Date()
     @State private var showCustomize = false
+    @State private var scrollMonitor: Any?
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
@@ -26,6 +34,12 @@ struct MenubarView: View {
             upNext
                 .padding(.horizontal, 8)
 
+            if store.scrubOffsetMinutes != 0 {
+                scrubPill
+                    .padding(.top, 10)
+                    .transition(.scale(scale: 0.85).combined(with: .opacity))
+            }
+
             Divider().padding(.top, 8)
 
             footer
@@ -33,11 +47,70 @@ struct MenubarView: View {
                 .padding(.vertical, 6)
         }
         .frame(width: 360)
+        .animation(.spring(response: 0.3, dampingFraction: 0.85),
+                   value: store.scrubOffsetMinutes == 0)
         .task { store.bootstrap() }
+        .onAppear { installScrollScrub() }
+        .onDisappear { removeScrollScrub() }
         .onReceive(timer) { tick = $0 }
         .sheet(isPresented: $showCustomize) {
             MenubarCustomizeView()
                 .environment(store)
+        }
+    }
+
+    // MARK: - Scrub pill
+
+    private var scrubPill: some View {
+        Button {
+            store.snapToNow()
+        } label: {
+            Text(scrubDeltaText)
+                .font(.system(size: 12, weight: .heavy))
+                .monospacedDigit()
+                .padding(.horizontal, 14)
+                .frame(height: 28)
+        }
+        .buttonStyle(SkeuomorphicPillButtonStyle())
+    }
+
+    private var scrubDeltaText: String {
+        let minutes = Int(store.scrubOffsetMinutes.rounded())
+        let sign = minutes >= 0 ? "+" : "−"
+        let abs = Swift.abs(minutes)
+        let days = abs / 1440
+        let hours = (abs % 1440) / 60
+        let mins = abs % 60
+        var parts: [String] = []
+        if days > 0 { parts.append("\(days)d") }
+        if hours > 0 { parts.append("\(hours)h") }
+        if mins > 0 && days == 0 { parts.append("\(mins)m") }
+        if parts.isEmpty { parts.append("0m") }
+        return "\(sign)\(parts.joined(separator: " "))"
+    }
+
+    // MARK: - Scroll-wheel scrub
+
+    /// Install an `NSEvent` local monitor that translates scroll-wheel delta
+    /// into store scrub. Only active while the popover is on screen.
+    private func installScrollScrub() {
+        guard scrollMonitor == nil else { return }
+        scrollMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { event in
+            let delta = Double(event.scrollingDeltaY)
+            guard delta != 0 else { return event }
+            // Two-finger scroll DOWN (deltaY negative on a trackpad with
+            // natural scrolling) moves time FORWARD — feels like dragging
+            // the day forward by pulling it toward you.
+            store.scrubOffsetMinutes -= delta
+            // Consume the event so the popover never tries to scroll.
+            return nil
+        }
+    }
+
+    private func removeScrollScrub() {
+        if let monitor = scrollMonitor {
+            NSEvent.removeMonitor(monitor)
+            scrollMonitor = nil
         }
     }
 

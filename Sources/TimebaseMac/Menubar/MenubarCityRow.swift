@@ -17,8 +17,6 @@ struct MenubarCityRow: View {
         let isHome = city.id == store.homeCityId
 
         HStack(alignment: .center, spacing: 6) {
-            Text(Brand.emoji(forHour: hour))
-                .font(.system(size: 12))
             Text(city.name)
                 .font(.system(size: 13, weight: .regular))
                 .lineLimit(1)
