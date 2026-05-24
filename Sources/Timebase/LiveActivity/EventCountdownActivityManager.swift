@@ -50,9 +50,9 @@ enum EventCountdownActivityManager {
                 await activity.end(nil, dismissalPolicy: .immediate)
                 await startActivity(for: candidate, store: store)
             }
-            // If it IS the same event, leave it: the activity already
-            // carries a self-dismiss schedule for its endDate (see
-            // startActivity), so no further action is needed.
+            // If it IS the same event, leave it. The activity is staleDate-
+            // marked at endDate, so the system styles it as stale once the
+            // event is over; the next sync() call after endDate will end it.
         }
     }
 
@@ -76,27 +76,17 @@ enum EventCountdownActivityManager {
             title: event.title,
             start: event.startDate
         )
+        // staleDate at event.endDate lets the system render the card in its
+        // "stale" style after the event is over. The activity stays
+        // genuinely active until the next sync() call ends it — that's what
+        // keeps the Dynamic Island showing it. Activities for past events
+        // get cleaned up the next time the user foregrounds the app.
         let content = ActivityContent(state: state, staleDate: event.endDate)
         do {
-            let activity = try Activity.request(
+            _ = try Activity.request(
                 attributes: attrs,
                 content: content,
                 pushType: nil
-            )
-            // ActivityKit has no "auto-end at date" on request. Ending the
-            // activity with a FUTURE dismissal date hands cleanup to the
-            // system: the (now-ended) card stays on the Lock Screen +
-            // Dynamic Island — the countdown keeps ticking, since
-            // Text(timerInterval:) self-renders regardless of activity
-            // state — and the system removes it at endDate WITHOUT the app
-            // needing to run. This is what makes the activity vanish when
-            // the event ends even if the app is never reopened.
-            //
-            // `.after(date)` is capped by the system to 4h past this call;
-            // our ≤1h lead time + scheduler's ≤2h durations stay inside it.
-            await activity.end(
-                ActivityContent(state: state, staleDate: event.endDate),
-                dismissalPolicy: .after(event.endDate)
             )
         } catch {
             #if DEBUG

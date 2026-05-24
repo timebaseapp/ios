@@ -37,22 +37,25 @@ struct EventCountdownLiveActivity: Widget {
                     .widgetURL(Self.tapDestination)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    // Same framework-bug workaround as compactTrailing —
-                    // an explicit frame keeps the expanded region from
-                    // bloating the layout.
-                    if context.state.start > Date() {
-                        Text(timerInterval: Date() ... context.state.start,
-                             countsDown: true)
-                            .monospacedDigit()
-                            .font(.system(size: 20, weight: .heavy))
-                            .foregroundStyle(.white)
-                            .multilineTextAlignment(.trailing)
-                            .frame(maxWidth: 100)
-                            .minimumScaleFactor(0.7)
-                    } else {
-                        Text("now")
-                            .font(.system(size: 20, weight: .heavy))
-                            .foregroundStyle(.white)
+                    // TimelineView with .explicit([start]) forces a single
+                    // SwiftUI re-evaluation at event.start, which flips the
+                    // conditional to "now". Without it the if-branch stays
+                    // stuck and Text(timerInterval:) freezes at 00:00:00.
+                    TimelineView(.explicit([Date(), context.state.start])) { timeline in
+                        if context.state.start > timeline.date {
+                            Text(timerInterval: timeline.date ... context.state.start,
+                                 countsDown: true)
+                                .monospacedDigit()
+                                .font(.system(size: 20, weight: .heavy))
+                                .foregroundStyle(.white)
+                                .multilineTextAlignment(.trailing)
+                                .frame(maxWidth: 100)
+                                .minimumScaleFactor(0.7)
+                        } else {
+                            Text("now")
+                                .font(.system(size: 20, weight: .heavy))
+                                .foregroundStyle(.white)
+                        }
                     }
                 }
                 DynamicIslandExpandedRegion(.bottom) {
@@ -165,24 +168,30 @@ private struct LockScreenCard: View {
                 // trailing edge of the card. minLength: 12 guarantees a
                 // little breathing room even with long titles.
                 Spacer(minLength: 12)
-                // Explicit frame here too — `Text(timerInterval:)` in
-                // Live Activity context reserves much wider intrinsic
-                // size than the rendered digits. With a clamp the layout
-                // is deterministic: 130pt fits "1:23:45" at 30pt heavy.
-                if context.state.start > Date() {
-                    Text(timerInterval: Date() ... context.state.start,
-                         countsDown: true)
-                        .monospacedDigit()
-                        .font(.system(size: 30, weight: .heavy))
-                        .foregroundStyle(fg)
-                        .multilineTextAlignment(.trailing)
-                        .minimumScaleFactor(0.6)
-                        .lineLimit(1)
-                        .frame(maxWidth: 130, alignment: .trailing)
-                } else {
-                    Text("now")
-                        .font(.system(size: 30, weight: .heavy))
-                        .foregroundStyle(fg)
+                // TimelineView with .explicit([start]) forces a single
+                // SwiftUI re-evaluation at event.start, so the conditional
+                // can flip from countdown to "now". Without it the timer
+                // freezes at 00:00:00 and "now" never renders.
+                //
+                // Explicit frame here too — Text(timerInterval:) in Live
+                // Activity context reserves much wider intrinsic size than
+                // the rendered digits. 130pt fits "1:23:45" at 30pt heavy.
+                TimelineView(.explicit([Date(), context.state.start])) { timeline in
+                    if context.state.start > timeline.date {
+                        Text(timerInterval: timeline.date ... context.state.start,
+                             countsDown: true)
+                            .monospacedDigit()
+                            .font(.system(size: 30, weight: .heavy))
+                            .foregroundStyle(fg)
+                            .multilineTextAlignment(.trailing)
+                            .minimumScaleFactor(0.6)
+                            .lineLimit(1)
+                            .frame(maxWidth: 130, alignment: .trailing)
+                    } else {
+                        Text("now")
+                            .font(.system(size: 30, weight: .heavy))
+                            .foregroundStyle(fg)
+                    }
                 }
             }
             .frame(maxWidth: .infinity)

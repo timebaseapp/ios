@@ -136,6 +136,7 @@ targets:
         CFBundleVersion: "1"
         WKApplication: true
         WKRunsIndependentlyOfCompanionApp: true
+        WKCompanionAppBundleIdentifier: cc.timebase.ios
         NSCalendarsFullAccessUsageDescription: "Timebase shows your upcoming events as live countdowns."
         NSUbiquitousKeyValueStoreUsageDescription: "Timebase syncs your cities across your devices via iCloud."
         ITSAppUsesNonExemptEncryption: false
