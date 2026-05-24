@@ -14,6 +14,8 @@ Timebase is a world clock and meeting planner for people who live across time zo
 
 There's no signup. No analytics. No servers we control. The app does its thinking on your device and keeps it there.
 
+This repo contains the **iOS, iPadOS, and watchOS** targets — all bespoke, all in one Xcode project, shipped as one App Store record via Universal Purchase. The macOS app lives in [`timebaseapp/macos`](https://github.com/timebaseapp/macos), linked into the same App Store product via Universal Purchase in App Store Connect. The web app lives in [`timebaseapp/web`](https://github.com/timebaseapp/web).
+
 ## In v1
 
 | | |
@@ -26,9 +28,17 @@ There's no signup. No analytics. No servers we control. The app does its thinkin
 | 🎙️ &nbsp; **Siri & Shortcuts** | *"Hey Siri, what time is it in Tokyo?"* Indexed by Spotlight. App-icon long-press for the rest. |
 | 🎛️ &nbsp; **Control Center** | One-tap Timebase tile on iOS 18+. |
 
+## On iPad
+
+A bespoke iPad layout — not a scaled-up iPhone app. Built inside this Xcode project as part of the same iOS binary (iPad isn't a separately-shippable target under Universal Purchase). Larger widgets, multi-column where it earns its keep, full-bleed ambient world clock for Stage Manager. See [`scope/ipad.md`](https://github.com/timebaseapp/ios/blob/main/scope/ipad.md) for the spec — in progress.
+
+## On Apple Watch
+
+A standalone watchOS app target inside this project: world clock pages, Up Next, complications across every family, and a Live Activity bridge from the paired iPhone. Dark-only — the Watch lives at night. See `Sources/TimebaseWatch/` and `TimebaseWatchComplications/`.
+
 ## How it's built
 
-SwiftUI, iOS 17+, Swift 6 strict concurrency. One main target plus a widget extension. No third-party dependencies.
+SwiftUI, iOS 17+, Swift 6 strict concurrency. One Xcode project, multiple targets (iOS, watchOS, widget extension, watch complications). No third-party dependencies.
 
 - `TimebaseStore` — `@Observable`, `@MainActor`, the single source of truth
 - `EventKit` for Calendar across Apple / Google / Exchange / iCloud
