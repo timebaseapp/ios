@@ -76,12 +76,14 @@ enum EventCountdownActivityManager {
             title: event.title,
             start: event.startDate
         )
-        // staleDate at event.endDate lets the system render the card in its
-        // "stale" style after the event is over. The activity stays
-        // genuinely active until the next sync() call ends it — that's what
-        // keeps the Dynamic Island showing it. Activities for past events
-        // get cleaned up the next time the user foregrounds the app.
-        let content = ActivityContent(state: state, staleDate: event.endDate)
+        // staleDate at event.startDate is what flips the lockscreen card
+        // from countdown to "now". Apple's docs: "SwiftUI calls body again
+        // when isStale changes." The Dynamic Island expanded view also
+        // re-renders cleanly. Trade-off: the activity picks up Apple's
+        // dimmed "stale" styling once the event starts, which reads as a
+        // sensible "this is happening / past" cue. The activity stays
+        // visible until sync() ends it on next app foreground.
+        let content = ActivityContent(state: state, staleDate: event.startDate)
         do {
             _ = try Activity.request(
                 attributes: attrs,
