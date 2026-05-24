@@ -104,7 +104,7 @@ private struct UpNextSection: View {
 
     private var emptyPermissionState: some View {
         VStack(spacing: 18) {
-            Text("Connect Calendar to see your day in countdowns.")
+            Text("Calendar isn't connected. Continue to see your events as live countdowns.")
                 .font(.custom("DepartureMono-Regular", size: 14))
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 32)

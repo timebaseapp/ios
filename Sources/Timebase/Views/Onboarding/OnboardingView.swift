@@ -17,8 +17,7 @@ struct OnboardingView: View {
                         onPrimary: {
                             location.requestPermission()
                             advance()
-                        },
-                        onSkip: { advance() }
+                        }
                     )
                 default:
                     GestureCalendarScreen(
@@ -96,7 +95,6 @@ private struct OnboardingBackdrop: View {
 
 private struct WordmarkScreen: View {
     let onPrimary: () -> Void
-    let onSkip: () -> Void
 
     var body: some View {
         VStack {
@@ -118,25 +116,27 @@ private struct WordmarkScreen: View {
 
             Spacer()
 
-            VStack(spacing: 12) {
+            // Single Continue button per App Review 5.1.1(iv): no encouraging
+            // button text, no exit affordance — the next tap must lead
+            // straight to the iOS Location prompt.
+            VStack(spacing: 10) {
+                Text("Next, we'll ask for your location so Timebase can set your home city.")
+                    .font(.custom("DepartureMono-Regular", size: 13))
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(.primary.opacity(0.75))
+                    .padding(.horizontal, 32)
+
                 Button {
                     Haptics.buttonPressed()
                     onPrimary()
                 } label: {
-                    Text("Where are you?")
+                    Text("Continue")
                         .font(.custom("DepartureMono-Regular", size: 14))
                         .padding(.horizontal, 28)
                         .frame(height: 46)
                 }
                 .buttonStyle(SkeuomorphicPillButtonStyle())
-
-                Button(action: onSkip) {
-                    Text("Skip")
-                        .font(.custom("DepartureMono-Regular", size: 12))
-                        .foregroundStyle(.primary.opacity(0.6))
-                        .padding(.vertical, 8)
-                }
-                .buttonStyle(.plain)
+                .padding(.top, 4)
             }
             .padding(.bottom, 60)
         }

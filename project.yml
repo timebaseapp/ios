@@ -64,8 +64,10 @@ targets:
             UIApplicationShortcutItemIconType: UIApplicationShortcutIconTypeFavorite
     dependencies:
       - target: TimebaseWidgets
-      - target: TimebaseWatch
-        embed: true
+      # TimebaseWatch is intentionally NOT embedded for the v1.0 resubmission.
+      # The watch target stays defined in the project for ongoing dev, but
+      # the iOS app ships iPhone-only until the watch passes its own first
+      # App Review pass (separate submission).
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: cc.timebase.ios
