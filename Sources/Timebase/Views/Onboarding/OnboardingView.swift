@@ -27,8 +27,7 @@ struct OnboardingView: View {
                                 await store.requestCalendarAccess()
                                 finish()
                             }
-                        },
-                        onSecondary: { finish() }
+                        }
                     )
                 }
             }
@@ -148,7 +147,6 @@ private struct WordmarkScreen: View {
 
 private struct GestureCalendarScreen: View {
     let onPrimary: () -> Void
-    let onSecondary: () -> Void
     @State private var pulseUp = false
     @State private var pulseRight = false
 
@@ -178,30 +176,28 @@ private struct GestureCalendarScreen: View {
 
             Spacer()
 
-            // Calendar opt-in
+            // Calendar opt-in. Single Continue button per App Review 5.1.1(iv):
+            // no encouraging button text, no exit affordance — the next tap
+            // must go straight to the iOS permission prompt where the user
+            // can grant or deny.
             VStack(spacing: 10) {
-                Text("Want event countdowns too?")
+                Text("Next, we'll ask for Calendar access so Timebase can show your events as live countdowns.")
                     .font(.custom("DepartureMono-Regular", size: 13))
+                    .multilineTextAlignment(.center)
                     .foregroundStyle(.primary.opacity(0.75))
+                    .padding(.horizontal, 32)
 
                 Button {
                     Haptics.buttonPressed()
                     onPrimary()
                 } label: {
-                    Text("Connect Calendar")
+                    Text("Continue")
                         .font(.custom("DepartureMono-Regular", size: 14))
                         .padding(.horizontal, 28)
                         .frame(height: 46)
                 }
                 .buttonStyle(SkeuomorphicPillButtonStyle())
-
-                Button(action: onSecondary) {
-                    Text("Maybe later")
-                        .font(.custom("DepartureMono-Regular", size: 12))
-                        .foregroundStyle(.primary.opacity(0.6))
-                        .padding(.vertical, 8)
-                }
-                .buttonStyle(.plain)
+                .padding(.top, 4)
             }
             .padding(.bottom, 56)
         }
